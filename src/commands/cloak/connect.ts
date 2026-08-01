@@ -4,15 +4,18 @@
  * Connects bdg's existing session machinery to a CBM-managed browser profile:
  * 1. Resolve profile by ID via GET /api/profiles
  * 2. If stopped, POST /api/profiles/:id/launch (Bearer if token set)
- * 3. GET /api/profiles/:id/cdp/local/json/list → pick the page target
+ * 3. GET /api/profiles/:id/cdp[/local]/json/list → pick the page target
+ *    (local path when no token; authenticated /cdp path when CBPM_API_TOKEN is set)
  * 4. targetUrl = [url] ?? page.url
- * 5. startSessionViaDaemon(targetUrl, \{ chromeWsUrl: page.webSocketDebuggerUrl \})
+ * 5. startSessionViaDaemon(targetUrl, \{ chromeWsUrl, cdpHeaders: \{ Authorization \} \})
  * 6. Print the standard landing page
  *
  * Caveats (documented in command help):
- * - Requires ALLOW_LOCAL_CDP=true on the CBM server + loopback reachability
- *   (bdg's CDP WS client sends no auth headers, relying on the local-CDP bypass;
- *   the tunnel/remote path can't be used for the WS — only REST)
+ * - With CBPM_API_TOKEN set: connects to the authenticated /cdp path and injects
+ *   the Bearer header on the CDP WebSocket upgrade, so it works over a remote /
+ *   Cloudflare-tunnel host as well as locally.
+ * - Without a token: falls back to the loopback /cdp/local path, which requires
+ *   ALLOW_LOCAL_CDP=true on the CBM server + loopback reachability.
  * - bdg's single-session model means run `bdg stop` first if a session is active
  * - Passing the page's current URL means bdg's unconditional Page.navigate is a
  *   same-URL reload, not a disruptive navigation
@@ -24,6 +27,7 @@
 import type { Command } from 'commander';
 
 import { cbmGet, cbmPost } from '@/commands/cloak/client.js';
+import { getCbmApiConfig } from '@/commands/cloak/config.js';
 import type { CbmCdpTarget, CbmLaunchResult, CbmProfile } from '@/commands/cloak/types.js';
 import { runCommand } from '@/commands/shared/CommandRunner.js';
 import { jsonOption } from '@/commands/shared/commonOptions.js';
@@ -64,18 +68,21 @@ async function launchIfStopped(profileId: string): Promise<CbmLaunchResult | nul
 }
 
 /**
- * Fetch CDP targets from the profile's local CDP endpoint via the CBM proxy.
+ * Fetch CDP targets for a profile via the CBM proxy.
  *
- * Uses the local (no-auth) CDP HTTP endpoint at:
- *   GET /api/profiles/:id/cdp/local/json/list
- *
- * Relies on ALLOW_LOCAL_CDP=true on the server so no Bearer token is required
- * for loopback requests to this endpoint.
+ * - useLocal=true  → GET /api/profiles/:id/cdp/local/json/list (loopback,
+ *   ALLOW_LOCAL_CDP, no Bearer required). Used when no token is configured.
+ * - useLocal=false → GET /api/profiles/:id/cdp/json/list (authenticated; cbmGet
+ *   attaches the Bearer token). Works locally and over a remote/tunnel host.
  */
-async function fetchProfileCdpTargets(profileId: string): Promise<CbmCdpTarget[]> {
-  const result = await cbmGet<CbmCdpTarget[]>(
-    `/api/profiles/${encodeURIComponent(profileId)}/cdp/local/json/list`
-  );
+async function fetchProfileCdpTargets(
+  profileId: string,
+  useLocal: boolean
+): Promise<CbmCdpTarget[]> {
+  const cdpPath = useLocal
+    ? `/api/profiles/${encodeURIComponent(profileId)}/cdp/local/json/list`
+    : `/api/profiles/${encodeURIComponent(profileId)}/cdp/json/list`;
+  const result = await cbmGet<CbmCdpTarget[]>(cdpPath);
   if (!result.success || !result.data) return [];
 
   const targets = result.data;
@@ -136,7 +143,8 @@ export function registerCloakConnectCommand(program: Command): void {
     .command('connect')
     .description(
       'Connect bdg to a CloakBrowser-managed profile for inspection. ' +
-        'Requires ALLOW_LOCAL_CDP=true on the CBM server.'
+        'With CBPM_API_TOKEN set, works locally or over a remote/tunnel host; ' +
+        'without a token, requires ALLOW_LOCAL_CDP=true + loopback reachability.'
     )
     .argument('<id>', 'Profile ID or name to connect to')
     .argument('[url]', 'Optional URL to navigate to (defaults to current page URL)')
@@ -180,16 +188,21 @@ export function registerCloakConnectCommand(program: Command): void {
             }
           }
 
-          // Step 3: Fetch CDP targets via local CDP proxy
-          const targets = await fetchProfileCdpTargets(profile.id);
+          // Step 3: Fetch CDP targets via the CBM proxy.
+          // With a token, use the authenticated /cdp path (works locally and over
+          // a tunnel); without one, fall back to the loopback /cdp/local path.
+          const { token } = getCbmApiConfig();
+          const useLocal = !token;
+          const targets = await fetchProfileCdpTargets(profile.id, useLocal);
           if (targets.length === 0) {
             return {
               success: false,
               error: `No CDP targets found for profile '${id}'`,
               exitCode: EXIT_CODES.CDP_CONNECTION_FAILURE,
               errorContext: {
-                suggestion:
-                  'Ensure ALLOW_LOCAL_CDP=true is set on the CBM server and the profile is running.',
+                suggestion: useLocal
+                  ? 'Ensure ALLOW_LOCAL_CDP=true is set on the CBM server and the profile is running.'
+                  : 'Ensure the profile is running and CBPM_API_TOKEN is valid for the CBM server.',
               },
             };
           }
@@ -236,6 +249,9 @@ export function registerCloakConnectCommand(program: Command): void {
               compact: false,
               headless: false,
               chromeWsUrl: pageTarget.webSocketDebuggerUrl,
+              // Inject the Bearer token on the CDP WebSocket upgrade so bdg can
+              // reach the authenticated /cdp endpoint over a remote/tunnel host.
+              cdpHeaders: token ? { Authorization: `Bearer ${token}` } : undefined,
               quiet: false,
               chromeFlags: undefined,
             },

@@ -813,11 +813,35 @@ bdg localhost:3000 --user-data-dir ~/custom # Custom Chrome profile directory
 # Chrome Options
 bdg localhost:3000 --headless                   # Launch Chrome in headless mode
 bdg localhost:3000 --chrome-ws-url <url>        # Connect to existing Chrome instance
+bdg localhost:3000 --cdp-headers '<json>'        # Custom headers on the CDP WS upgrade (e.g. Bearer auth)
 
 # Output Optimization
 bdg localhost:3000 --compact                    # Compact JSON (no indentation, 30% size reduction)
 bdg localhost:3000 --max-body-size 10           # Set max response body size (MB, default: 5)
 ```
+
+### CDP attach defaults (config file)
+
+`--chrome-ws-url` and `--cdp-headers` can be baked into a config file so they
+don't have to be passed every time (handy for an authenticated / remote CDP
+endpoint, e.g. a CloakBrowser Manager profile over a tunnel):
+
+```
+~/.config/bdg/config.json   (or $XDG_CONFIG_HOME/bdg/config.json, or $BDG_CONFIG_FILE)
+```
+
+```json
+{
+  "chromeWsUrl": "wss://cloak.example.com/api/profiles/<id>/cdp/devtools/page/<guid>",
+  "cdpHeaders": { "Authorization": "Bearer <token>" }
+}
+```
+
+Env overrides (precedence: CLI flag > env > file): `BDG_CHROME_WS_URL`,
+`BDG_CDP_HEADERS` (JSON object string), `BDG_CONFIG_FILE` (path).
+
+See [configuration.md](./configuration.md) for the full reference and
+[cloak-integration.md](./cloak-integration.md) for the CBM tunnel use case.
 
 ## Session Files
 
