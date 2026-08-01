@@ -10,6 +10,7 @@
 import type { Command } from 'commander';
 
 import { cbmPost } from '@/commands/cloak/client.js';
+import { exitCodeFromStatus, withProfileId } from '@/commands/cloak/resolve.js';
 import type { CbmLaunchResult, CbmOkResponse } from '@/commands/cloak/types.js';
 import { runCommand } from '@/commands/shared/CommandRunner.js';
 import { jsonOption } from '@/commands/shared/commonOptions.js';
@@ -42,23 +43,23 @@ export function registerCloakLaunchCommand(program: Command): void {
   program
     .command('launch')
     .description('Launch a CloakBrowser profile')
-    .argument('<id>', 'Profile ID to launch')
+    .argument('<id>', 'Profile ID or name to launch')
     .addOption(jsonOption())
     .action(async (id: string, options: LaunchOptions) => {
       await runCommand<LaunchOptions, CbmLaunchResult>(
         async () => {
-          const result = await cbmPost<CbmLaunchResult>(
-            `/api/profiles/${encodeURIComponent(id)}/launch`
+          const result = await withProfileId<CbmLaunchResult>(id, (pid) =>
+            cbmPost<CbmLaunchResult>(`/api/profiles/${encodeURIComponent(pid)}/launch`)
           );
 
           if (!result.success) {
             return {
               success: false,
               error: result.error ?? `Failed to launch profile '${id}'`,
-              exitCode: EXIT_CODES.RESOURCE_NOT_FOUND,
+              exitCode: exitCodeFromStatus(result.statusCode),
               errorContext: {
                 suggestion:
-                  'Verify the profile ID exists and is not already running. Check: bdg cloak profiles',
+                  'Verify the profile exists and is not already running. Check: bdg cloak profiles',
               },
             };
           }
@@ -90,23 +91,22 @@ export function registerCloakStopCommand(program: Command): void {
   program
     .command('stop')
     .description('Stop a CloakBrowser profile')
-    .argument('<id>', 'Profile ID to stop')
+    .argument('<id>', 'Profile ID or name to stop')
     .addOption(jsonOption())
     .action(async (id: string, options: StopOptions) => {
       await runCommand<StopOptions, CbmOkResponse>(
         async () => {
-          const result = await cbmPost<CbmOkResponse>(
-            `/api/profiles/${encodeURIComponent(id)}/stop`
+          const result = await withProfileId<CbmOkResponse>(id, (pid) =>
+            cbmPost<CbmOkResponse>(`/api/profiles/${encodeURIComponent(pid)}/stop`)
           );
 
           if (!result.success) {
             return {
               success: false,
               error: result.error ?? `Failed to stop profile '${id}'`,
-              exitCode: EXIT_CODES.RESOURCE_NOT_FOUND,
+              exitCode: exitCodeFromStatus(result.statusCode),
               errorContext: {
-                suggestion:
-                  'Verify the profile ID exists and is running. Check: bdg cloak profiles',
+                suggestion: 'Verify the profile exists and is running. Check: bdg cloak profiles',
               },
             };
           }
