@@ -926,6 +926,49 @@ bdg stores session data in `~/.bdg/`:
 
 See [`src/types.ts`](../src/types.ts) for complete type definitions.
 
+## CloakBrowser Manager (`bdg cloak`)
+
+`bdg cloak` integrates with a CloakBrowser Manager instance. Configure the
+API URL and token via `CBPM_API_URL` / `CBPM_API_TOKEN` env vars or the shared
+`~/.cbpm/config.json` file.
+
+The examples below use a profile *name*; a profile UUID works too.
+
+### Status and discovery
+```bash
+bdg cloak status
+bdg cloak profiles
+bdg cloak get proxy-tz-demo
+bdg cloak proxy-credentials
+```
+
+### Quick profile tweaks
+```bash
+# Change proxy by IPVanish location code, credential UUID, group UUID, URL, or none
+bdg cloak profile proxy proxy-tz-demo --location us-nyc
+bdg cloak profile proxy proxy-tz-demo --credential <uuid>
+bdg cloak profile proxy proxy-tz-demo --group <uuid>
+bdg cloak profile proxy proxy-tz-demo --url socks5://u:p@host:1080
+bdg cloak profile proxy proxy-tz-demo --none
+
+# Change timezone
+bdg cloak profile timezone proxy-tz-demo --timezone Europe/Berlin
+
+# Reset identity fields
+bdg cloak profile reseed proxy-tz-demo     # new fingerprint seed
+bdg cloak profile reset-ua proxy-tz-demo  # clear explicit User-Agent
+```
+
+### Full-field update / launch / connect
+```bash
+bdg cloak update proxy-tz-demo --humanize --geoip --notes "shop account"
+bdg cloak launch proxy-tz-demo
+bdg cloak connect proxy-tz-demo https://example.com
+```
+
+See [`docs/cloak-integration.md`](./cloak-integration.md) for the full CBM walkthrough,
+tunnel setup, and troubleshooting.
+
 ## Related Documentation
 
 - **Architecture**: [`docs/architecture/BIDIRECTIONAL_IPC.md`](architecture/BIDIRECTIONAL_IPC.md) - Daemon/worker architecture
