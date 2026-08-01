@@ -495,6 +495,56 @@ connect` instead — it attaches to a specific page target.
 
 ---
 
+## Common workflows
+
+### Change a profile's proxy and timezone
+
+`bdg cloak profile` provides shortcuts for the tweaks you do most often.
+Each command accepts a profile ID or name.
+
+```bash
+# Assign an IPVanish proxy by location code (no UUID hunting)
+bdg cloak profile proxy proxy-tz-demo --location us-nyc
+
+# Or assign by saved credential UUID / rotation group UUID / inline URL
+bdg cloak profile proxy proxy-tz-demo --credential <uuid>
+bdg cloak profile proxy proxy-tz-demo --group <uuid>
+bdg cloak profile proxy proxy-tz-demo --url socks5://u:p@host:1080
+
+# Remove the proxy entirely
+bdg cloak profile proxy proxy-tz-demo --none
+
+# Change timezone
+bdg cloak profile timezone proxy-tz-demo --timezone Europe/Berlin
+
+# List available saved credentials with their location codes
+bdg cloak proxy-credentials
+```
+
+### Reseed fingerprint or reset User-Agent
+
+```bash
+# Generate a new random fingerprint seed (takes effect on next launch)
+bdg cloak profile reseed proxy-tz-demo
+
+# Clear an explicit User-Agent so CBM regenerates it on next launch
+bdg cloak profile reset-ua proxy-tz-demo
+```
+
+All profile field changes (proxy, timezone, fingerprint seed, User-Agent) are
+persisted to the CBM database and take effect the next time the profile is
+launched. Restart the profile with `bdg cloak stop <id>` followed by
+`bdg cloak launch <id>` if it is currently running.
+
+### Full-field updates still work
+
+For surgery on any profile field (`--name`, `--platform`, `--humanize`, etc.),
+use `bdg cloak update <id>`.
+
+```bash
+bdg cloak update proxy-tz-demo --user-agent "Mozilla/5.0 custom" --timezone America/Los_Angeles
+```
+
 ## Reference — command summary
 
 | Command | Description |
@@ -506,6 +556,11 @@ connect` instead — it attaches to a specific page target.
 | `bdg cloak update <id>` | Partially update a profile (only provided fields change; ID or name) |
 | `bdg cloak delete <id>` | Delete a profile and its browser data (ID or name) |
 | `bdg cloak clone <id>` | Clone a profile with a new fingerprint seed (ID or name) |
+| `bdg cloak profile proxy <id>` | Change a profile's proxy (location, credential, group, URL, or none) |
+| `bdg cloak profile timezone <id>` | Set a profile's timezone |
+| `bdg cloak profile reseed <id>` | Generate a new random fingerprint seed |
+| `bdg cloak profile reset-ua <id>` | Clear explicit User-Agent |
+| `bdg cloak proxy-credentials` | List saved proxy credentials |
 | `bdg cloak launch <id>` | Start a profile's browser |
 | `bdg cloak stop <id>` | Stop a running profile |
 | `bdg cloak connect <id> [url]` | Attach bdg session to a profile and optionally navigate |

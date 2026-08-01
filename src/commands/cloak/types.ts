@@ -14,6 +14,66 @@ export interface CbmTag {
   color: string | null;
 }
 
+// ── Proxy credentials / providers / groups ────────────────────────────────────
+
+export interface CbmProxyCredential {
+  id: string;
+  name: string;
+  scheme: string;
+  host: string;
+  port: number;
+  username: string;
+  has_password: boolean;
+  proxy_url: string;
+  provider_id: string | null;
+  provider_location: string | null;
+  last_status: string | null;
+  last_exit_ip: string | null;
+  last_country: string | null;
+  last_checked_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CbmProxyProvider {
+  id: string;
+  name: string;
+  type: string;
+  scheme: string;
+  host_template: string;
+  port: number;
+  username: string;
+  has_password: boolean;
+  options: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CbmProxyGroupMember {
+  credential_id: string;
+  position: number;
+  name: string;
+  scheme: string;
+  host: string;
+  port: number;
+  username: string;
+  provider_id: string | null;
+  provider_location: string | null;
+  last_status: string | null;
+  last_exit_ip: string | null;
+  last_country: string | null;
+}
+
+export interface CbmProxyGroup {
+  id: string;
+  name: string;
+  rotation_mode: string;
+  member_count: number;
+  members: CbmProxyGroupMember[];
+  created_at: string;
+  updated_at: string;
+}
+
 // ── Profile resources (runtime stats) ─────────────────────────────────────────
 
 export interface CbmProfileResources {
