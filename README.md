@@ -73,7 +73,11 @@ bdg cdp --search cookie                     # 14 results
 
 ## Documentation
 
-📖 **[Wiki](https://github.com/szymdzum/browser-debugger-cli/wiki)** - Guides, command reference, recipes
+📖 **[CLI Reference](docs/CLI_REFERENCE.md)** - Complete command catalog, including `bdg cloak`  
+🔌 **[CloakBrowser Manager Integration](docs/cloak-integration.md)** - Manage and inspect CBM profiles  
+🤖 **[CLAUDE.md](CLAUDE.md)** - Agent development guide and common patterns  
+
+📖 **[Wiki](https://github.com/szymdzum/browser-debugger-cli/wiki)** - Additional guides and recipes
 
 - [Getting Started](https://github.com/szymdzum/browser-debugger-cli/wiki/Getting-Started)
 - [Commands](https://github.com/szymdzum/browser-debugger-cli/wiki/Commands)

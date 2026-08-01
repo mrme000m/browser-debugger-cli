@@ -324,7 +324,7 @@ $ bdg cdp Network.getCookies
 
 **Impact:** Low - These don't break functionality, just consistency.
 
-### 🔴 Outstanding Issues (From AGENT_DISCOVERABILITY.md)
+### 🔴 Outstanding Issues (from the AGENT_DISCOVERABILITY write-up)
 
 1. **Wait commands missing** - No `bdg wait --selector` or `bdg wait --network-idle`
    - **Workaround:** Agents use `sleep` (brittle)
@@ -413,7 +413,7 @@ The principles aren't just design philosophy—they're the lived experience of u
 - [AGENT_FRIENDLY_TOOLS.md](../principles/AGENT_FRIENDLY_TOOLS.md) - Foundational principles
 - [SELF_DOCUMENTING_SYSTEMS.md](../principles/SELF_DOCUMENTING_SYSTEMS.md) - Discovery patterns
 - [TYPO_DETECTION.md](../principles/TYPO_DETECTION.md) - Levenshtein implementation
-- [AGENT_DISCOVERABILITY.md](../principles/AGENT_DISCOVERABILITY.md) - Outstanding issues
+- AGENT_DISCOVERABILITY - Outstanding issues
 
 ---
 
