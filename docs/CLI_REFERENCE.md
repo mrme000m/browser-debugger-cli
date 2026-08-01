@@ -725,6 +725,37 @@ Console messages with objects are automatically expanded to show nested values:
 - Large objects truncated with `…` indicator
 - Special types formatted: Date, RegExp, Error, Map, Set
 
+## CloakBrowser Manager (CBM) Profile Commands
+
+`bdg cloak` integrates with [CloakBrowser Manager](https://github.com/CloakHQ/CloakBrowser-Manager)
+for fleet-scale browser profiles. It fully manages profiles and attaches bdg to
+a running profile over local network, Cloudflare tunnel, or SSH port forward.
+
+### Quick reference
+
+```bash
+bdg cloak status                      # server + running profile status
+bdg cloak profiles                    # list all profiles
+bdg cloak get <id>                    # full profile details (id or name)
+
+bdg cloak create --name shop-us-1 \
+  --timezone America/New_York --locale en-US \
+  --tag production --platform macos
+
+bdg cloak update <id> --notes "tweaked"
+bdg cloak clone <id> --name <clone-name>
+bdg cloak delete <id>
+
+bdg cloak launch <id>
+bdg cloak stop <id>
+
+# Attach bdg to a profile and navigate
+bdg cloak connect proxy-tz-demo https://www.yahoo.com/
+```
+
+All cloak commands support `--json` and `--help`. Setup, tunnel options, and
+troubleshooting are covered in [`docs/cloak-integration.md`](./cloak-integration.md).
+
 ## CDP Commands
 
 ### Protocol Introspection & Execution
@@ -900,4 +931,4 @@ See [`src/types.ts`](../src/types.ts) for complete type definitions.
 - **Architecture**: [`docs/architecture/BIDIRECTIONAL_IPC.md`](architecture/BIDIRECTIONAL_IPC.md) - Daemon/worker architecture
 - **Testing**: [`docs/quality/TESTING_PHILOSOPHY.md`](quality/TESTING_PHILOSOPHY.md) - Testing strategy
 - **Release Process**: [`docs/RELEASE_PROCESS.md`](RELEASE_PROCESS.md) - How to release new versions
-- **Docker**: [`docs/DOCKER.md`](DOCKER.md) - Running bdg in Docker containers
+

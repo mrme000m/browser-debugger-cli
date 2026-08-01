@@ -146,6 +146,39 @@ Notes:
 - CDP is full browser control — treat `CLOAK_AUTH_TOKEN` like a root
   credential.
 
+### Connecting over an SSH tunnel (with a token)
+
+If CBM is running on a remote host bound to `127.0.0.1:8080` (the Docker
+Compose default), forward the port to your local machine over SSH:
+
+```bash
+ssh -L 8080:127.0.0.1:8080 user@remote-host
+```
+
+Or bake the tunnel into `~/.ssh/config`:
+
+```ssh
+Host cloak-tunnel
+    HostName remote-host
+    User user
+    LocalForward 8080 127.0.0.1:8080
+    ServerAliveInterval 60
+    ServerAliveCountMax 3
+```
+
+Then aim `bdg cloak` at the local endpoint:
+
+```bash
+export CBPM_API_URL=http://127.0.0.1:8080
+export CBPM_API_TOKEN=<your CLOAK_AUTH_TOKEN>
+
+bdg cloak connect proxy-tz-demo https://example.com
+```
+
+`connect` uses the authenticated `/cdp` path, so the WebSocket upgrade goes
+through the tunnel with the `Authorization: Bearer` header injected
+automatically.
+
 For the generic `bdg <url>` attach path (manual `--chrome-ws-url` +
 `--cdp-headers`), those flags can also be baked into a config file — see
 [configuration.md](./configuration.md).
@@ -379,7 +412,7 @@ omit the stats line silently.
 The same data flows through:
 - `bdg cloak profiles` (human — per-profile)
 - `bdg cloak profiles --json` (machine-readable)
-- The CBM web dashboard at `https://clk.mrme.tech` (if using the tunnel)
+- The CBM web dashboard at `https://<your-cbm-host>` (if using the tunnel)
 - The `cbpm` CLI (`cbpm profiles list`)
 
 ---
@@ -403,6 +436,17 @@ Use the ID for precision.
 ---
 
 ## Caveats & troubleshooting
+
+### bdg daemon running old code after an update
+
+**Symptom:** After upgrading bdg, `bdg cloak connect` fails with a WebSocket
+`1006` error even though the token and URL are correct. The worker may log
+that the CDP headers are missing.
+
+**Fix:** The daemon keeps running until the last session stops. Run
+`bdg cleanup --force` (or `bdg stop` if a session is active) to terminate it,
+then retry the command. The new build's IPC logic then passes the
+`cdpHeaders` through correctly.
 
 ### `ALLOW_LOCAL_CDP` is `false` (default) and no token is set
 
@@ -430,7 +474,7 @@ a different browser.
 
 **Fix:** Run `bdg stop` first to end the previous session, then retry.
 
-### `bfg cloak profiles` shows no resources
+### `bdg cloak profiles` shows no resources
 
 **Cause:** The CBM server doesn't have `psutil` installed, or the
 profile is stopped.
