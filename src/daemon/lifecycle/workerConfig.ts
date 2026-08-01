@@ -69,6 +69,9 @@ export function parseWorkerConfig(): WorkerConfig {
     if (config.chromeFlags !== undefined) {
       normalized.chromeFlags = config.chromeFlags;
     }
+    if (config.cdpHeaders !== undefined) {
+      normalized.cdpHeaders = config.cdpHeaders;
+    }
 
     return normalized;
   } catch (error) {

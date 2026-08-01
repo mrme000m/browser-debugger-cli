@@ -12,4 +12,6 @@ export interface WorkerConfig {
   chromeWsUrl?: string;
   /** Custom Chrome flags (e.g., ['--ignore-certificate-errors']) */
   chromeFlags?: string[];
+  /** Custom HTTP headers for the CDP WebSocket upgrade */
+  cdpHeaders?: Record<string, string>;
 }

@@ -5,9 +5,10 @@ with [CloakBrowser Manager](https://github.com/CloakHQ/CloakBrowser-Manager) —
 a self-hosted browser-fleet orchestrator with per-profile fingerprints, proxy
 routing, and VNC access.
 
-With `bdg cloak` you can **list, launch, stop, and connect** to CBM-managed
-browser profiles directly from the bdg CLI, then use bdg's full inspection
-toolkit (DOM, network, console, raw CDP) against those profiles.
+With `bdg cloak` you can **fully manage** CBM profiles — list, get, create,
+update, delete, and clone — plus **launch, stop, and connect** to them, then
+use bdg's full inspection toolkit (DOM, network, console, raw CDP) against the
+live browser. Everything works locally or over a public Cloudflare-tunnel URI.
 
 ---
 
@@ -16,9 +17,9 @@ toolkit (DOM, network, console, raw CDP) against those profiles.
 | Requirement | Details |
 |---|---|
 | **CBM server** | Running and reachable (default `http://127.0.0.1:8080`) |
-| **ALLOW_LOCAL_CDP** | Must be `true` on the CBM server to use `connect` (see below) |
-| **bdg ≥ 0.7.2** | Includes the `cloak` command group |
-| **Auth token** | If the CBM server has `AUTH_TOKEN` set, you'll need it |
+| **ALLOW_LOCAL_CDP** | Only needed for **tokenless, loopback** `connect`. With a token set, `connect` uses the authenticated `/cdp` path (see below) |
+| **bdg ≥ 0.7.2** | Includes the `cloak` command group (`connect` auto-injects the Bearer token on the CDP WS) |
+| **Auth token** | Required for `connect` over a tunnel/remote host (and recommended generally). Set `CBPM_API_TOKEN`. |
 
 ## Configuration
 
@@ -58,13 +59,30 @@ If neither env vars nor config file are set, `bdg cloak` falls back to:
 - `api_url` = `http://127.0.0.1:8080`
 - `token` = _(empty — no auth header sent)_
 
+> **Generic `bdg <url>` attach path:** the `--chrome-ws-url` / `--cdp-headers`
+> defaults live in a separate config file (`~/.config/bdg/config.json`) — see
+> [configuration.md](./configuration.md). `bdg cloak connect` derives its auth
+> header from the cbpm `token` above, so you usually don't need that for CBM.
+
 ---
 
-## Enabling ALLOW_LOCAL_CDP (required for `bdg cloak connect`)
+## Connecting to a profile
 
-bdg's CDP WebSocket client sends **no authentication headers**, so the
-CBM server must trust loopback connections. Add this to your CBM
-environment:
+`bdg cloak connect` attaches bdg's CDP WebSocket client to a managed profile:
+
+- **With `CBPM_API_TOKEN` set (recommended):** `connect` launches the
+  profile, fetches the page target from the authenticated `/cdp/json/list`
+  endpoint, and injects `Authorization: Bearer <token>` on the CDP WebSocket
+  upgrade. Works **locally and over a remote / Cloudflare-tunnel host** — no
+  special server config beyond a strong `AUTH_TOKEN`.
+- **Without a token (loopback only):** `connect` falls back to the `/cdp/local`
+  path, which needs `ALLOW_LOCAL_CDP=true` and bdg on the same machine as the
+  CBM server (see the `ALLOW_LOCAL_CDP` block below).
+
+### Tokenless loopback mode (`ALLOW_LOCAL_CDP`)
+
+Only needed when you have no token configured and bdg runs on the same
+machine as the CBM server. Add this to your CBM environment:
 
 ```yaml
 # docker-compose.yml or .env
@@ -89,6 +107,48 @@ curl -s -o /dev/null -w "%{http_code}\n" \
 > **Security note:** Only enable `ALLOW_LOCAL_CDP` when bdg (or another local
 > tool) runs on the same machine as the CBM server. It skips authentication
 > for requests from `127.0.0.1` / `::1`.
+
+### Connecting over a Cloudflare tunnel (with a token)
+
+Expose CBM publicly and drive it from a remote machine. With a token set,
+`bdg cloak connect` uses the authenticated `/cdp` path and sends
+`Authorization: Bearer` on the WebSocket upgrade, so the tunnel just needs to
+forward it.
+
+```bash
+# On the client machine:
+export CBPM_API_URL=https://cloak.yourdomain.com
+export CBPM_API_TOKEN=<your CLOAK_AUTH_TOKEN>
+
+bdg cloak status                              # REST management works over the tunnel
+bdg cloak profiles
+bdg cloak get <profile-id>                    # full profile details over the tunnel
+bdg cloak create --name remote-profile --tag tunnel
+bdg cloak connect <profile-id> https://example.com   # authenticated WSS CDP attach
+```
+
+Tunnel ingress (`cloudflared`) — point the hostname at the CBM port:
+
+```yaml
+ingress:
+  - hostname: cloak.yourdomain.com
+    service: http://127.0.0.1:8080
+```
+
+Notes:
+
+- bdg's CDP WebSocket client sends no `Origin`, so the CBM server's
+  cross-origin WebSocket guard allows it.
+- Don't put **Cloudflare Access** on this hostname (it would intercept before
+  the origin). If you must, pass the CF Access service-token headers via the
+  generic `bdg <url> --cdp-headers=...` path (see
+  [configuration.md](./configuration.md)).
+- CDP is full browser control — treat `CLOAK_AUTH_TOKEN` like a root
+  credential.
+
+For the generic `bdg <url>` attach path (manual `--chrome-ws-url` +
+`--cdp-headers`), those flags can also be baked into a config file — see
+[configuration.md](./configuration.md).
 
 ---
 
@@ -133,6 +193,92 @@ bdg cloak profiles --tag production        # filter by tag
 bdg cloak profiles --status running        # only running profiles
 bdg cloak profiles --status stopped        # only stopped profiles
 bdg cloak profiles --json                  # machine-readable output
+```
+
+### `bdg cloak get <id>`
+
+Show a single profile's full details — every configured field, tags, the CDP
+endpoint, and live runtime resources. Accepts a profile **ID or name**.
+
+```bash
+$ bdg cloak get proxy-tz-demo
+proxy-tz-demo    (running)
+  id:              912925dd-a2fc-48db-b364-0259330952cd
+  platform:        windows
+  fingerprint_seed: 36775
+  proxy:            —
+  timezone/locale:  Australia/Sydney / en-AU
+  screen:           1920x1080
+  humanize:         yes (default)  geoip: true  headless: false
+  auto_launch:      false  restart_on_crash: false (max 5)
+  tags:             demo, au
+  cdp_endpoint:     ws://127.0.0.1:8080/api/profiles/912925dd-…/cdp
+  resources:        CPU 0% · 919.4MB · 2h 1m
+```
+
+`--json` returns the full `CbmProfile` object.
+
+### `bdg cloak create` — self-explaining profile creation
+
+Create a profile. The full option surface is generated from the backend
+`ProfileCreate` model and is **self-explaining** — no need to leave the CLI:
+
+```bash
+# Discover every field, its type, and its default (no API call):
+bdg cloak create --list-fields
+
+# Describe one field, with a worked example (no API call):
+bdg cloak create --describe timezone
+
+# Create (only --name is required):
+bdg cloak create --name shop-us-1 \
+  --timezone America/New_York --locale en-US \
+  --humanize --platform macos \
+  --proxy "socks5://user:pass@host:1080" \
+  --tag production --tag "us:blue" \
+  --launch-arg "--disable-features=Foo" \
+  --notes "shop account #3"
+```
+
+> **Flag fidelity:** bdg derives each option key from its flag (e.g. `--tag` →
+> the `tags` field), so `--tag`, `--proxy-credential`, `--proxy-group`, and
+> `--launch-arg` apply correctly. (cbpm has a latent name/flag mismatch that
+> silently ignores those four — bdg does not share that bug.) Tags use an
+> optional `tag:color` form (`--tag us:blue`).
+
+### `bdg cloak update <id>`
+
+Partially update a profile — **only the flags you pass are sent** (the server
+applies `exclude_unset`, so omitted fields are left untouched). Accepts a
+profile ID or name and reuses the same flags as `create`.
+
+```bash
+bdg cloak update shop-us-1 --notes "updated" --geoip
+bdg cloak update 912925dd… --no-clipboard-sync
+```
+
+> **Tags are replaced, not appended** — passing `--tag` sets the whole tag set;
+> omit it to leave tags unchanged. With no flags at all, `update` errors
+> (exit `81`) and points you to `--list-fields`.
+
+### `bdg cloak delete <id>`
+
+Delete a profile and its browser data (stops the browser first if running).
+Accepts a profile ID or name. There is no confirmation prompt — this keeps the
+command scriptable for automation.
+
+```bash
+bdg cloak delete shop-us-1
+```
+
+### `bdg cloak clone <id>`
+
+Clone a profile — the clone gets a **new random fingerprint seed** (a fresh
+device identity) and copies fingerprint/network/hardware/behavior fields,
+tags, and proxy links. Accepts a profile ID or name.
+
+```bash
+bdg cloak clone shop-us-1 --name shop-us-2
 ```
 
 ### `bdg cloak launch <id>` / `bdg cloak stop <id>`
@@ -238,12 +384,17 @@ The same data flows through:
 
 ---
 
-## Connecting to a profile by name
+## Profile IDs and names
 
-`bdg cloak connect` accepts either a profile **ID** or **name**:
+`bdg cloak connect`, `get`, `update`, `delete`, and `clone` all accept either a
+profile **ID** or **name**. A bare ID is used directly; if it doesn't match,
+bdg resolves it as a name via the profile list and retries.
 
 ```bash
 bdg cloak connect proxy-tz-demo https://example.com
+bdg cloak get proxy-tz-demo
+bdg cloak update proxy-tz-demo --notes "tweaked"
+bdg cloak clone proxy-tz-demo --name proxy-tz-demo-2
 ```
 
 If multiple profiles share the same name, the first match is used.
@@ -253,7 +404,7 @@ Use the ID for precision.
 
 ## Caveats & troubleshooting
 
-### `ALLOW_LOCAL_CDP` is `false` (default)
+### `ALLOW_LOCAL_CDP` is `false` (default) and no token is set
 
 **Symptom:** `bdg cloak connect` prints:
 
@@ -263,9 +414,14 @@ Error: Daemon error: Worker process exited before sending ready signal
 WebSocket closed: 1006
 ```
 
-**Fix:** Set `ALLOW_LOCAL_CDP=true` in the CBM environment and restart
-the container. The REST portion of `connect` (profile resolution,
-target discovery) works without it; only the WebSocket attach needs it.
+**Fix (recommended):** Set `CBPM_API_TOKEN` to your CBM `AUTH_TOKEN`. `connect`
+then uses the authenticated `/cdp` path (no `ALLOW_LOCAL_CDP` needed, works
+over a tunnel too).
+
+**Fix (tokenless, loopback only):** Set `ALLOW_LOCAL_CDP=true` in the CBM
+environment and restart the container. The REST portion of `connect`
+(profile resolution, target discovery) works without it; only the
+WebSocket attach needs it.
 
 ### bdg daemon already has an active session
 
@@ -301,6 +457,11 @@ connect` instead — it attaches to a specific page target.
 |---|---|
 | `bdg cloak status` | CBM server health, running count, version, aggregate resources |
 | `bdg cloak profiles` | List profiles with status, tags, VNC port, resources column |
+| `bdg cloak get <id>` | Show a profile's full details (ID or name) |
+| `bdg cloak create` | Create a profile — `--list-fields` / `--describe` are self-explaining |
+| `bdg cloak update <id>` | Partially update a profile (only provided fields change; ID or name) |
+| `bdg cloak delete <id>` | Delete a profile and its browser data (ID or name) |
+| `bdg cloak clone <id>` | Clone a profile with a new fingerprint seed (ID or name) |
 | `bdg cloak launch <id>` | Start a profile's browser |
 | `bdg cloak stop <id>` | Stop a running profile |
 | `bdg cloak connect <id> [url]` | Attach bdg session to a profile and optionally navigate |

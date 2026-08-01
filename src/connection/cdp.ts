@@ -200,6 +200,7 @@ export class CDPConnection implements CDPEventSource {
         perMessageDeflate: false,
         handshakeTimeout: WEBSOCKET_CONFIG.handshakeTimeout,
         maxPayload: WEBSOCKET_CONFIG.maxPayload,
+        ...(options.headers ? { headers: options.headers } : {}),
       });
 
       const connectTimeout = setTimeout(() => {

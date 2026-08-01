@@ -59,6 +59,8 @@ export interface SessionOptions {
   chromeWsUrl?: string;
   /** Custom Chrome flags (e.g., ['--ignore-certificate-errors']). */
   chromeFlags?: string[];
+  /** Custom HTTP headers for the CDP WebSocket upgrade (e.g. Authorization: Bearer <token>). */
+  cdpHeaders?: Record<string, string>;
 }
 
 /**

@@ -35,7 +35,7 @@ export interface CbmApiResult<T = unknown> {
  *
  * The path should include the leading `/api/` prefix (e.g., `/api/status`).
  *
- * @param method - HTTP method (GET, POST, DELETE).
+ * @param method - HTTP method (GET, POST, PUT, DELETE).
  * @param path - API path relative to base URL (e.g., '/api/profiles').
  * @param body - Optional request body (serialized as JSON).
  * @param config - Optional API config override (defaults to getCbmApiConfig()).
@@ -178,4 +178,25 @@ export async function cbmPost<T = unknown>(
   config?: CbmApiConfig
 ): Promise<CbmApiResult<T>> {
   return cbmFetch<T>('POST', path, body, config);
+}
+
+/**
+ * Convenience wrapper for PUT requests.
+ */
+export async function cbmPut<T = unknown>(
+  path: string,
+  body?: unknown,
+  config?: CbmApiConfig
+): Promise<CbmApiResult<T>> {
+  return cbmFetch<T>('PUT', path, body, config);
+}
+
+/**
+ * Convenience wrapper for DELETE requests.
+ */
+export async function cbmDelete<T = unknown>(
+  path: string,
+  config?: CbmApiConfig
+): Promise<CbmApiResult<T>> {
+  return cbmFetch<T>('DELETE', path, undefined, config);
 }

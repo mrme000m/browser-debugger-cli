@@ -45,6 +45,7 @@ export async function setupCDPAndNavigate(
   await cdp.connect(telemetryStore.targetInfo.webSocketDebuggerUrl, {
     autoReconnect: false,
     maxRetries: 10,
+    ...(config.cdpHeaders ? { headers: config.cdpHeaders } : {}),
     onDisconnect: (code, reason) => {
       log.info(`Chrome connection lost (code: ${code}, reason: ${reason})`);
       log.debug(workerExitingConnectionLoss());
