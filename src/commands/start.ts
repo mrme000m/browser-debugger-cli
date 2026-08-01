@@ -152,6 +152,12 @@ function buildSessionOptions(
   quiet: boolean;
   chromeFlags: string[] | undefined;
   cdpHeaders: Record<string, string> | undefined;
+  /**
+   * HTTP endpoint to re-query for the live CDP page-target list (worker
+   * recovery). The general `bdg <url>` path does not recover, so this is
+   * always undefined here; `bdg cloak connect` sets it.
+   */
+  cdpTargetListUrl: string | undefined;
 } {
   const maxBodySizeRule = positiveIntRule({ min: 1, max: 100, required: false });
   const timeoutRule = positiveIntRule({ min: 1, max: 3600, required: false });
@@ -191,6 +197,7 @@ function buildSessionOptions(
     quiet: options.quiet ?? false,
     chromeFlags,
     cdpHeaders,
+    cdpTargetListUrl: undefined,
   };
 }
 

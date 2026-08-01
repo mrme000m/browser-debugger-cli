@@ -129,6 +129,7 @@ export async function launchSessionInWorker(
     chromeWsUrl: options.chromeWsUrl,
     chromeFlags: options.chromeFlags,
     cdpHeaders: options.cdpHeaders,
+    cdpTargetListUrl: options.cdpTargetListUrl,
   });
 
   const currentDir = dirname(fileURLToPath(import.meta.url));

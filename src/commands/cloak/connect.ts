@@ -7,8 +7,15 @@
  * 3. GET /api/profiles/:id/cdp[/local]/json/list → pick the page target
  *    (local path when no token; authenticated /cdp path when CBPM_API_TOKEN is set)
  * 4. targetUrl = [url] ?? page.url
- * 5. startSessionViaDaemon(targetUrl, \{ chromeWsUrl, cdpHeaders: \{ Authorization \} \})
+ * 5. startSessionViaDaemon(targetUrl, \{ chromeWsUrl, cdpHeaders, cdpTargetListUrl \})
  * 6. Print the standard landing page
+ *
+ * Reliability: the page-target GUID is per-launch, so a CBM profile relaunch
+ * mints a fresh GUID and the webSocketDebuggerUrl resolved here goes stale.
+ * `cdpTargetListUrl` (the same /json/list endpoint) is threaded to the worker
+ * so it can re-resolve the current page target and reconnect automatically on a
+ * WebSocket drop (see src/daemon/lifecycle/recovery.ts). `cdpHeaders` carries
+ * the Bearer token for both the initial and recovery list fetches.
  *
  * Caveats (documented in command help):
  * - With CBPM_API_TOKEN set: connects to the authenticated /cdp path and injects
@@ -16,10 +23,11 @@
  *   Cloudflare-tunnel host as well as locally.
  * - Without a token: falls back to the loopback /cdp/local path, which requires
  *   ALLOW_LOCAL_CDP=true on the CBM server + loopback reachability.
- * - bdg's single-session model means run `bdg stop` first if a session is active
+ * - bdg's single-session model means run `bdg stop` first if a session is active,
+ *   or pass --force to stop-and-reconnect in one step.
  * - Passing the page's current URL means bdg's unconditional Page.navigate is a
  *   same-URL reload, not a disruptive navigation
- *   (verified: cdpSetup.ts:60-62 navigates even for external Chrome)
+ *   (verified: cdpSetup.ts navigates even for external Chrome)
  *
  * Mirrors: cbpm profiles connect in CloakBrowser-Manager/cli/src/commands/profiles.ts
  */
@@ -28,15 +36,22 @@ import type { Command } from 'commander';
 
 import { cbmGet, cbmPost } from '@/commands/cloak/client.js';
 import { getCbmApiConfig } from '@/commands/cloak/config.js';
-import type { CbmCdpTarget, CbmLaunchResult, CbmProfile } from '@/commands/cloak/types.js';
+import type { CbmLaunchResult, CbmProfile } from '@/commands/cloak/types.js';
 import { runCommand } from '@/commands/shared/CommandRunner.js';
 import { jsonOption } from '@/commands/shared/commonOptions.js';
 import type { BaseOptions } from '@/commands/shared/optionTypes.js';
 import { startSessionViaDaemon } from '@/commands/shared/startHelpers.js';
+import { isDaemonRunning, launchDaemon } from '@/daemon/launcher.js';
+import { stopSession } from '@/ipc/client.js';
+import { delay } from '@/utils/async.js';
+import { fetchCdpTargetList, findPageTarget } from '@/utils/cdpTargets.js';
 import { EXIT_CODES } from '@/utils/exitCodes.js';
 
 /** Connect command options. */
-type ConnectOptions = BaseOptions;
+type ConnectOptions = BaseOptions & {
+  /** Stop any existing bdg session first, then reconnect with a fresh target. */
+  force?: boolean;
+};
 
 /** Internal result for connect flow output. */
 interface ConnectResult {
@@ -68,54 +83,46 @@ async function launchIfStopped(profileId: string): Promise<CbmLaunchResult | nul
 }
 
 /**
- * Fetch CDP targets for a profile via the CBM proxy.
+ * Stop any existing bdg session and (re)start the daemon for a fresh connect.
  *
- * - useLocal=true  → GET /api/profiles/:id/cdp/local/json/list (loopback,
- *   ALLOW_LOCAL_CDP, no Bearer required). Used when no token is configured.
- * - useLocal=false → GET /api/profiles/:id/cdp/json/list (authenticated; cbmGet
- *   attaches the Bearer token). Works locally and over a remote/tunnel host.
- */
-async function fetchProfileCdpTargets(
-  profileId: string,
-  useLocal: boolean
-): Promise<CbmCdpTarget[]> {
-  const cdpPath = useLocal
-    ? `/api/profiles/${encodeURIComponent(profileId)}/cdp/local/json/list`
-    : `/api/profiles/${encodeURIComponent(profileId)}/cdp/json/list`;
-  const result = await cbmGet<CbmCdpTarget[]>(cdpPath);
-  if (!result.success || !result.data) return [];
-
-  const targets = result.data;
-  if (!Array.isArray(targets)) return [];
-  return targets;
-}
-
-/**
- * Find the primary page target from a list of CDP targets.
+ * The `--force` path: `stopSession()` tears down the running worker AND asks the
+ * daemon to shut down (its normal stop behavior). The daemon is then relaunched
+ * so the connect below has a daemon to talk to. Best-effort: if there was no
+ * session/daemon, nothing is stopped and a fresh daemon is started.
  *
- * Prefers a real page (not about:blank, chrome://, devtools://).
- * Falls back to any page target, then any target with a webSocketDebuggerUrl.
+ * @throws on a real daemon-launch failure (a "already running" outcome is not an
+ *   error — the running daemon is reused).
  */
-function findPageTarget(targets: CbmCdpTarget[]): CbmCdpTarget | null {
-  if (targets.length === 0) return null;
+async function forceReconnectDaemon(): Promise<void> {
+  try {
+    await stopSession();
+  } catch {
+    // No session or no daemon — nothing to stop.
+  }
 
-  // Prefer a page with a real URL
-  const realPage = targets.find(
-    (t) =>
-      t.type === 'page' &&
-      t.url &&
-      !t.url.startsWith('about:') &&
-      !t.url.startsWith('chrome://') &&
-      !t.url.startsWith('devtools://')
-  );
-  if (realPage) return realPage;
+  // The daemon shuts itself down after a successful stop; wait for it to exit
+  // so the fresh launch below doesn't collide with the dying process/lock.
+  for (let i = 0; i < 30 && isDaemonRunning(); i++) {
+    await delay(100);
+  }
+  // Grace period for PID-file / lock cleanup after the process exits.
+  await delay(150);
 
-  // Fall back to any page target
-  const anyPage = targets.find((t) => t.type === 'page');
-  if (anyPage) return anyPage;
+  if (isDaemonRunning()) {
+    // It never exited (or came back) — reuse it.
+    return;
+  }
 
-  // Last resort: first target of any type with a webSocketDebuggerUrl
-  return targets.find((t) => !!t.webSocketDebuggerUrl) ?? null;
+  try {
+    await launchDaemon();
+  } catch (error) {
+    const code = (error as Error & { code?: string }).code;
+    if (code === 'DAEMON_ALREADY_RUNNING') {
+      // A daemon is up — reuse it.
+      return;
+    }
+    throw error;
+  }
 }
 
 /**
@@ -144,14 +151,33 @@ export function registerCloakConnectCommand(program: Command): void {
     .description(
       'Connect bdg to a CloakBrowser-managed profile for inspection. ' +
         'With CBPM_API_TOKEN set, works locally or over a remote/tunnel host; ' +
-        'without a token, requires ALLOW_LOCAL_CDP=true + loopback reachability.'
+        'without a token, requires ALLOW_LOCAL_CDP=true + loopback reachability. ' +
+        'Auto-recovers if the profile relaunches; use --force to reset first.'
     )
     .argument('<id>', 'Profile ID or name to connect to')
     .argument('[url]', 'Optional URL to navigate to (defaults to current page URL)')
     .addOption(jsonOption())
+    .option('--force', 'Stop any existing bdg session first, then reconnect fresh')
     .action(async (id: string, url: string | undefined, options: ConnectOptions) => {
       await runCommand<ConnectOptions, ConnectResult>(
         async () => {
+          // Step 0 (optional): --force tears down any existing bdg session and
+          // restarts the daemon so this connect starts fresh with a newly
+          // resolved target.
+          if (options.force) {
+            try {
+              await forceReconnectDaemon();
+            } catch (error) {
+              return {
+                success: false,
+                error: `--force failed to reset the session: ${
+                  error instanceof Error ? error.message : String(error)
+                }`,
+                exitCode: EXIT_CODES.SOFTWARE_ERROR,
+              };
+            }
+          }
+
           // Step 1: Resolve profile
           const profile = await resolveProfile(id);
           if (!profile) {
@@ -188,12 +214,19 @@ export function registerCloakConnectCommand(program: Command): void {
             }
           }
 
-          // Step 3: Fetch CDP targets via the CBM proxy.
-          // With a token, use the authenticated /cdp path (works locally and over
-          // a tunnel); without one, fall back to the loopback /cdp/local path.
-          const { token } = getCbmApiConfig();
+          // Step 3: Fetch CDP targets via the CBM proxy and compute the list URL
+          // the worker will re-query to recover from a profile relaunch. With a
+          // token, use the authenticated /cdp path (works locally and over a
+          // tunnel); without one, fall back to the loopback /cdp/local path.
+          const { token, api_url } = getCbmApiConfig();
           const useLocal = !token;
-          const targets = await fetchProfileCdpTargets(profile.id, useLocal);
+          const cdpListPath = useLocal
+            ? `/api/profiles/${encodeURIComponent(profile.id)}/cdp/local/json/list`
+            : `/api/profiles/${encodeURIComponent(profile.id)}/cdp/json/list`;
+          const cdpTargetListUrl = `${api_url}${cdpListPath}`;
+          const cdpHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
+
+          const targets = await fetchCdpTargetList(cdpTargetListUrl, cdpHeaders);
           if (targets.length === 0) {
             return {
               success: false,
@@ -230,14 +263,16 @@ export function registerCloakConnectCommand(program: Command): void {
 
           // Step 5: Determine target URL
           // Use the provided [url] argument; otherwise use the current page URL.
-          // bdg's cdpSetup.ts:60-62 does an unconditional Page.navigate, so
-          // passing the current URL makes it a same-URL reload instead of a
-          // disruptive navigation.
+          // bdg's cdpSetup.ts does an unconditional Page.navigate, so passing the
+          // current URL makes it a same-URL reload instead of a disruptive
+          // navigation.
           const targetUrl = url ?? pageTarget.url;
 
-          // Step 6: Start session via daemon (reuses bdg's normal session path)
-          // startSessionViaDaemon calls process.exit() internally, so we never
-          // reach the return below in normal flow.
+          // Step 6: Start session via daemon (reuses bdg's normal session path).
+          // cdpTargetListUrl + cdpHeaders are threaded so the worker can
+          // re-resolve the page target and reconnect automatically if the profile
+          // relaunches (the page-target GUID is per-launch). startSessionViaDaemon
+          // calls process.exit() internally, so we never reach the return below.
           await startSessionViaDaemon(
             targetUrl,
             {
@@ -251,7 +286,9 @@ export function registerCloakConnectCommand(program: Command): void {
               chromeWsUrl: pageTarget.webSocketDebuggerUrl,
               // Inject the Bearer token on the CDP WebSocket upgrade so bdg can
               // reach the authenticated /cdp endpoint over a remote/tunnel host.
-              cdpHeaders: token ? { Authorization: `Bearer ${token}` } : undefined,
+              cdpHeaders,
+              // The /json/list endpoint the worker re-queries to recover.
+              cdpTargetListUrl,
               quiet: false,
               chromeFlags: undefined,
             },

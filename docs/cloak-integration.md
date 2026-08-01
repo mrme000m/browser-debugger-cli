@@ -343,11 +343,20 @@ bdg cloak connect 912925dd-a2fc-48db-b364-0259330952cd
 
 # Connect AND navigate to a specific URL
 bdg cloak connect 912925dd-a2fc-48db-b364-0259330952cd https://example.com
+
+# Stop any existing bdg session and reconnect with a fresh target
+bdg cloak connect 912925dd-a2fc-48db-b364-0259330952cd --force
 ```
+
+If the profile relaunches (crash-restart, stop + launch, or the browser
+closing), bdg **auto-recovers**: it re-resolves the current page target and
+reconnects, so you don't lose the session. See
+[Reliability & recovery](#reliability--recovery).
 
 **What happens:**
 1. Resolves the profile by ID (launches it automatically if stopped).
-2. Fetches the page-level CDP WebSocket URL via `/json/list`.
+2. Fetches the page-level CDP WebSocket URL via `/json/list` (and threads that
+   endpoint to the worker so it can auto-recover after a relaunch).
 3. Starts the bdg daemon and attaches it to the page.
 4. Navigates to `[url]` (or the current page URL if omitted — a
    same-URL reload, non-disruptive).
@@ -435,6 +444,83 @@ Use the ID for precision.
 
 ---
 
+## Reliability & recovery
+
+When a CBM profile's browser **relaunches** — a crash with `restart_on_crash`, a
+manual `bdg cloak stop` + `launch`, or the browser closing — Chrome mints a
+**fresh per-launch page-target GUID** and CBM rotates the CDP debug port. The
+page-level `webSocketDebuggerUrl` bdg attached to at `connect` time is now
+**stale**, and CBM closes the old WebSocket. This is why bdg used to "lose the
+profile" the moment a profile restarted, while the CBM web UI (which reconnects
+to a stable, server-re-resolved path on each click) kept working.
+
+### Automatic recovery
+
+`bdg cloak connect` threads the live `/json/list` endpoint (`cdpTargetListUrl`)
+and the auth headers to the worker. When the CDP WebSocket drops, instead of
+exiting, the worker:
+
+1. Re-queries the live `/json/list` endpoint (with the Bearer token) for the
+   **current** page targets.
+2. Picks the current page target (fresh GUID).
+3. Reconnects the same CDP session to the new `webSocketDebuggerUrl`.
+4. Re-enables telemetry domains and re-navigates to the session URL.
+
+The loop backs off exponentially (1s → 2s → 4s … capped at 30s) and is bounded
+so it rides out the relaunch window where the profile is briefly `stopped`
+(the list endpoint returns 404/empty). When the profile comes back up — whether
+it auto-restarted or you relaunched it — bdg re-attaches automatically. The
+general `bdg <url>` attach path (no `cdpTargetListUrl`) keeps the legacy
+behavior (exit on loss); recovery only applies to `bdg cloak connect`.
+
+Tune the bounds with env vars (optional):
+
+| Env var | Default | Meaning |
+|---|---|---|
+| `BDG_CDP_RECOVERY_MAX_ATTEMPTS` | `30` | Max recovery attempts before giving up |
+| `BDG_CDP_RECOVERY_MAX_SECONDS` | `300` | Max total recovery duration (5 min) |
+
+On exhaustion (the profile stays down past the cap), the worker falls back to
+the legacy cleanup-and-exit; just run `bdg cloak connect <id>` again once the
+profile is back.
+
+### Manual reconnect (`--force`)
+
+To tear down an existing bdg session and re-attach with a freshly resolved
+target in one step — e.g. if a session is wedged or you want a clean attach:
+
+```bash
+bdg cloak connect <id> --force
+```
+
+`--force` stops any active bdg session (restarting the daemon) and then runs
+the normal connect flow with a fresh target resolution. It is the atomic
+equivalent of `bdg stop && bdg cloak connect <id>`.
+
+### Observing recovery
+
+`bdg status` shows the recovery state — after a successful auto-recovery it
+reports the **new** target id / `webSocketDebuggerUrl` plus a recovery summary:
+
+```
+Recovery
+  Recoveries:      2
+  Last Recovered:  35s ago
+  Last Reason:     no targets (profile stopped/relaunching)
+```
+
+`bdg status --json` includes the same data in the `recovery` field.
+
+### No CBM server changes required
+
+CBM already exposes everything bdg needs: `/api/profiles/<id>/cdp[/local]/json/list`
+is **always live** (re-fetched from the current Chrome on every call), and
+`/api/profiles/<id>/status` reports `running`/`stopped`. bdg's recovery mirrors
+the CBM web UI's pattern (re-query the live target, reconnect) — no backend
+change is needed.
+
+---
+
 ## Caveats & troubleshooting
 
 ### bdg daemon running old code after an update
@@ -472,7 +558,9 @@ WebSocket attach needs it.
 **Symptom:** `connect` fails because a session is already attached to
 a different browser.
 
-**Fix:** Run `bdg stop` first to end the previous session, then retry.
+**Fix:** Run `bdg stop` first to end the previous session, then retry — or do it
+in one step with `bdg cloak connect <id> --force` (see
+[Reliability & recovery](#reliability--recovery)).
 
 ### `bdg cloak profiles` shows no resources
 
@@ -563,7 +651,7 @@ bdg cloak update proxy-tz-demo --user-agent "Mozilla/5.0 custom" --timezone Amer
 | `bdg cloak proxy-credentials` | List saved proxy credentials |
 | `bdg cloak launch <id>` | Start a profile's browser |
 | `bdg cloak stop <id>` | Stop a running profile |
-| `bdg cloak connect <id> [url]` | Attach bdg session to a profile and optionally navigate |
+| `bdg cloak connect <id> [url]` | Attach bdg session to a profile; `--force` resets first; auto-recovers on relaunch |
 
 All commands support `--json` for machine-readable output and `--help`
 for inline documentation.

@@ -54,6 +54,35 @@ export async function setupCDPAndNavigate(
   });
   log.info('CDP connection established');
 
+  const cleanupFunctions = await reattachToTarget(cdp, config, telemetryStore, chrome, log);
+
+  return { cdp, cleanupFunctions };
+}
+
+/**
+ * Attach a freshly-connected CDPConnection to the page target.
+ *
+ * Enables telemetry collectors, navigates to the session URL, waits for the page
+ * to be ready, and (for a bdg-launched Chrome) refreshes the resolved target.
+ * Returns the collector cleanup functions.
+ *
+ * Called both at session start (from setupCDPAndNavigate) and on recovery (after
+ * the worker re-resolves a target and reconnects), so a fresh WebSocket gets its
+ * telemetry domains re-enabled and re-navigated identically.
+ *
+ * Precondition: telemetryStore.targetInfo must already point at the target the
+ * CDPConnection is connected to (set by setupChromeConnection at start, or by
+ * the recovery routine before calling this).
+ *
+ * @returns Collector cleanup functions for the newly attached session.
+ */
+export async function reattachToTarget(
+  cdp: CDPConnection,
+  config: WorkerConfig,
+  telemetryStore: TelemetryStore,
+  chrome: LaunchedChrome | null,
+  log: Logger
+): Promise<CleanupFunction[]> {
   console.error(`[worker] Activating collectors before navigation...`);
   const cleanupFunctions = await startTelemetryCollectors(cdp, config, telemetryStore, log);
   console.error(`[worker] Collectors active and ready to capture telemetry`);
@@ -77,5 +106,5 @@ export async function setupCDPAndNavigate(
     }
   }
 
-  return { cdp, cleanupFunctions };
+  return cleanupFunctions;
 }

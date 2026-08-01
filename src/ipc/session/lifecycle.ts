@@ -61,6 +61,13 @@ export interface SessionOptions {
   chromeFlags?: string[];
   /** Custom HTTP headers for the CDP WebSocket upgrade (e.g. Authorization: Bearer <token>). */
   cdpHeaders?: Record<string, string>;
+  /**
+   * HTTP endpoint to re-query for the live CDP page-target list, used by the
+   * worker to re-resolve the target after a WebSocket drop. When unset, the
+   * worker exits on CDP loss (legacy behavior). Auth headers come from
+   * cdpHeaders.
+   */
+  cdpTargetListUrl?: string;
 }
 
 /**
