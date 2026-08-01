@@ -285,6 +285,8 @@ export interface SessionStartOptions {
   chromeFlags: string[] | undefined;
   /** Custom HTTP headers for the CDP WebSocket upgrade */
   cdpHeaders: Record<string, string> | undefined;
+  /** HTTP endpoint to re-query for the live CDP page-target list (recovery). */
+  cdpTargetListUrl: string | undefined;
 }
 
 // ConsoleLevel is defined in types.ts for proper architectural layering

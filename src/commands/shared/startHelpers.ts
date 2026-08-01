@@ -61,6 +61,7 @@ export async function startSessionViaDaemon(
         chromeWsUrl: options.chromeWsUrl,
         chromeFlags: options.chromeFlags,
         cdpHeaders: options.cdpHeaders,
+        cdpTargetListUrl: options.cdpTargetListUrl,
       })
     );
 
