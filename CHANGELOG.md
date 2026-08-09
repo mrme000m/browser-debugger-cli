@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- Empty for now - add here as you work -->
 
+## [0.7.3] - 2026-08-10
+
+### Added
+
+- **CloakBrowser Manager persona + identity-rotation integration** — sync `bdg cloak` with CBM v0.6.0+ organic-fingerprint features
+  - `bdg cloak personas` lists the curated coherent device personas (GET /api/personas)
+  - `bdg cloak profile rotate-identity <id>` mints a fresh coherent identity (new seed + re-apply the persona hardware bundle) — stronger than `reseed`
+  - `--persona <name>` flag on `bdg cloak create` / `update` (auto-generated from the self-explaining schema)
+  - `persona` shown in `bdg cloak get` / `--fingerprint` output
+
+### Changed
+
+- **`bdg cloak analyze` output** now renders CBM's live detection report — per-signal `checks` with actual vs expected vs detail (pass/fail/warn), a `warnings` count, and the static coherence warnings. Previously it read the pre-v0.6 `details[]`/`result` shape (kept as a legacy fallback for older servers)
+- **Self-explaining create surface** synced with CBM: `device_memory` typed as `float` ("real Chrome only reports 0.25/0.5/1/2/4/8, capped at 8"); `brand_version` description now says "leave unset to derive from the CloakBrowser binary" (example `146.0.7680.177.5`)
+- `docs/cloak-integration.md` rewritten around the persona-first workflow, live `analyze` output, identity rotation, and organic-fingerprint guidance; README cloak section updated
+
 ## [0.7.2] - 2025-12-17
 
 ### Fixed

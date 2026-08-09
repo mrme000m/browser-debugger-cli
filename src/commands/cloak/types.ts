@@ -130,6 +130,8 @@ export interface CbmProfile {
   is_mobile: boolean;
   has_touch: boolean;
   extension_paths: string[] | null;
+  /** Coherent real-world device persona (sets screen/GPU/cores/memory/DPR/etc together). */
+  persona: string | null;
   color_scheme: string | null;
   launch_args: string[];
   notes: string | null;
@@ -227,18 +229,56 @@ export interface CbmCdpTarget {
 
 // ── Detection report ─────────────────────────────────────────────────────────
 
-export interface CbmDetectionDetail {
+/**
+ * One row of a live detection report from POST /api/profiles/:id/analyze.
+ *
+ * Mirrors CBM backend `evaluate_detection_report` checks: each signal is
+ * compared actual-vs-expected and graded pass/fail/warn with a human detail.
+ */
+export interface CbmDetectionCheck {
+  /** Detection-signal name (e.g. "User Agent", "WebGL Renderer", "WebRTC IP leak"). */
   test: string;
-  result: string;
+  /** pass | fail | warn (warn = could not verify, e.g. no proxy exit IP to compare). */
+  status: 'pass' | 'fail' | 'warn';
+  /** The value actually read from the live page (navigator/WebGL/screen/…). */
+  actual: unknown;
+  /** The value the profile intended to emit (the profile's configured field). */
+  expected: unknown;
+  /** Human-readable explanation of the comparison / why it failed. */
+  detail: string;
 }
 
+/**
+ * Live detection report returned by POST /api/profiles/:id/analyze.
+ *
+ * CBM launches a one-shot headless copy of the profile, reads the real
+ * runtime fingerprint signals from about:blank, and compares them to the
+ * profile's intended values. `checks` is the per-signal breakdown;
+ * `coherence_warnings` is the static cross-field coherence engine output.
+ */
 export interface CbmDetectionReport {
   profile_id: string;
   passed: number;
   failed: number;
-  details: CbmDetectionDetail[];
+  warnings: number;
+  checks: CbmDetectionCheck[];
   coherence_warnings: string[];
+  /** Raw signal readings read from the page (navigator/screen/WebGL/voices/…). */
+  raw?: Record<string, unknown>;
+  /** Set when the headless launch or probe itself errored (checks is then empty). */
   error?: string;
+}
+
+// ── Device personas ───────────────────────────────────────────────────────────
+
+/** A coherent real-world device persona, from GET /api/personas. */
+export interface CbmPersona {
+  /** Persona key usable with `--persona` (e.g. "win11-rtx3070-desktop"). */
+  name: string;
+  /** Human-readable label. */
+  label: string;
+  /** Fingerprint platform: windows | macos | linux. */
+  platform: string;
 }
 
 // ── API config ────────────────────────────────────────────────────────────────

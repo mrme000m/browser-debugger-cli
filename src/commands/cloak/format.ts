@@ -73,6 +73,7 @@ export function formatProfile(p: CbmProfile, fingerprintMode = false): string {
     `  id:              ${p.id}`,
     `  platform:        ${p.platform}`,
     `  fingerprint_seed: ${p.fingerprint_seed}`,
+    ...(p.persona ? [`  persona:         ${p.persona}`] : []),
   ];
 
   if (fingerprintMode) {

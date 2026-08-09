@@ -55,17 +55,23 @@ bdg stop                           # End session
 
 ## CloakBrowser Manager integration
 
-`bdg cloak` manages and connects to [CloakBrowser Manager](https://github.com/CloakHQ/CloakBrowser-Manager) profiles. Quickly rotate proxies, timezones, fingerprint seeds, and User-Agent overrides:
+`bdg cloak` manages and connects to [CloakBrowser Manager](https://github.com/CloakHQ/CloakBrowser-Manager) profiles. Build organic, detector-resistant fingerprints with curated device personas, then verify them live:
 
 ```bash
-bdg cloak profiles
-bdg cloak profile proxy my-profile --location us-nyc
-bdg cloak profile timezone my-profile --timezone Europe/Berlin
-bdg cloak profile reseed my-profile
-bdg cloak profile reset-ua my-profile
+bdg cloak personas                           # list coherent device bundles
+bdg cloak create --name us-shop --persona win11-rtx3070-desktop --geoip
+bdg cloak get us-shop --fingerprint         # inspect the organic fields
+bdg cloak analyze us-shop                    # live actual-vs-expected verification
+
+# Rotate identity / proxy / timezone / UA
+bdg cloak profile rotate-identity us-shop   # new seed + re-apply persona bundle
+bdg cloak profile reseed us-shop
+bdg cloak profile proxy us-shop --location us-nyc
+bdg cloak profile timezone us-shop --timezone Europe/Berlin
+bdg cloak profile reset-ua us-shop
 ```
 
-See [`docs/cloak-integration.md`](docs/cloak-integration.md) for setup, tunnel usage, and the full command reference.
+See [`docs/cloak-integration.md`](docs/cloak-integration.md) for setup, tunnel usage, organic-fingerprint guidance, and the full command reference.
 
 ## Current State
 

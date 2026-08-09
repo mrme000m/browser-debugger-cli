@@ -3,11 +3,12 @@
  *
  * Quick, everyday profile tweaks that do not require memorising backend field
  * names or UUIDs:
- *   - proxy:     assign a saved credential by location code, credential id,
- *                rotation group id, inline URL, or clear the proxy entirely
- *   - timezone:  set the profile timezone
- *   - reseed:    generate a new random fingerprint seed
- *   - reset-ua:  clear the explicit User-Agent so it is regenerated on launch
+ *   - proxy:           assign a saved credential by location code, credential id,
+ *                      rotation group id, inline URL, or clear the proxy entirely
+ *   - timezone:        set the profile timezone
+ *   - reseed:          generate a new random fingerprint seed
+ *   - reset-ua:        clear the explicit User-Agent so it is regenerated on launch
+ *   - rotate-identity: fresh coherent identity (new seed + re-apply persona bundle)
  *
  * These build on the existing CBM API: PUT /api/profiles/:id,
  * POST /api/profiles/:id/reseed, etc.
@@ -307,6 +308,55 @@ function registerProfileResetUaCommand(program: Command): void {
     });
 }
 
+// ── rotate-identity ──────────────────────────────────────────────────────────
+
+type ProfileRotateIdentityOptions = BaseOptions;
+
+/**
+ * Register `bdg cloak profile rotate-identity <id>`.
+ *
+ * Stronger than `reseed`: draws a new full-entropy seed AND, when the profile
+ * has a persona, re-applies that persona's coherent hardware bundle (screen,
+ * GPU, cores, memory, platform version, DPR) so the rotated identity stays
+ * internally consistent. Mirrors CBM POST /api/profiles/:id/rotate-identity.
+ */
+function registerProfileRotateIdentityCommand(program: Command): void {
+  program
+    .command('rotate-identity')
+    .description('Fresh coherent identity: new seed + re-apply the persona hardware bundle')
+    .argument('<id>', 'Profile ID or name')
+    .addOption(jsonOption())
+    .action(async (id: string, options: ProfileRotateIdentityOptions) => {
+      await runCommand<ProfileRotateIdentityOptions, CbmProfile>(
+        async () => {
+          const result = await withProfileId<CbmProfile>(id, (pid) =>
+            cbmPost<CbmProfile>(`/api/profiles/${encodeURIComponent(pid)}/rotate-identity`)
+          );
+          if (!result.success) {
+            return profileError(
+              id,
+              result,
+              'Verify the profile exists. List profiles with: bdg cloak profiles'
+            );
+          }
+          const data = result.data;
+          if (!data) {
+            return {
+              success: false,
+              error: 'CBM returned no profile data',
+              exitCode: EXIT_CODES.SOFTWARE_ERROR,
+            };
+          }
+          return { success: true, data };
+        },
+        options,
+        (p: CbmProfile): string =>
+          `${formatProfile(p)}\n\nIdentity rotated for ${id}: new seed ${p.fingerprint_seed}` +
+          `${p.persona ? ` (persona: ${p.persona})` : ''}. Effective on next launch.`
+      );
+    });
+}
+
 // ── Public registration ────────────────────────────────────────────────────
 
 /**
@@ -315,10 +365,13 @@ function registerProfileResetUaCommand(program: Command): void {
 export function registerCloakProfileCommand(program: Command): void {
   const profile = program
     .command('profile')
-    .description('Quick profile tweaks: proxy, timezone, fingerprint seed, User-Agent');
+    .description(
+      'Quick profile tweaks: proxy, timezone, fingerprint seed, User-Agent, identity rotation'
+    );
 
   registerProfileProxyCommand(profile);
   registerProfileTimezoneCommand(profile);
   registerProfileReseedCommand(profile);
   registerProfileResetUaCommand(profile);
+  registerProfileRotateIdentityCommand(profile);
 }

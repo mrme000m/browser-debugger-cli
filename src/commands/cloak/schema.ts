@@ -155,10 +155,11 @@ export const PROFILE_FIELDS: FieldSchema[] = [
   {
     name: 'device_memory',
     flag: '--device-memory',
-    type: 'int',
+    type: 'float',
     required: false,
     default: 'null',
-    description: 'navigator.deviceMemory in GB. Standard Chrome values: 0.25, 0.5, 1, 2, 4, 8.',
+    description:
+      'navigator.deviceMemory in GB. Real Chrome only reports 0.25/0.5/1/2/4/8 (capped at 8).',
     example: '8',
   },
   {
@@ -176,8 +177,9 @@ export const PROFILE_FIELDS: FieldSchema[] = [
     type: 'string',
     required: false,
     default: 'null',
-    description: 'Sec-CH-UA browser version.',
-    example: '120.0.6099.109',
+    description:
+      'Sec-CH-UA browser version. Leave unset to derive from the CloakBrowser binary Chromium version (recommended — a mismatch with the UA is a bot tell).',
+    example: '146.0.7680.177.5',
   },
   {
     name: 'platform_version',
@@ -433,6 +435,16 @@ export const PROFILE_FIELDS: FieldSchema[] = [
     description:
       'JSON file path containing Playwright storage_state to pre-seed cookies/localStorage.',
     example: '/data/state.json',
+  },
+  {
+    name: 'persona',
+    flag: '--persona',
+    type: 'string',
+    required: false,
+    default: 'null',
+    description:
+      'Coherent real-world device persona (sets screen/GPU/cores/memory/DPR/platform-version together). Run `bdg cloak personas` for the list.',
+    example: 'win11-rtx3070-desktop',
   },
   {
     name: 'tags',

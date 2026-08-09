@@ -18,7 +18,7 @@ live browser. Everything works locally or over a public Cloudflare-tunnel URI.
 |---|---|
 | **CBM server** | Running and reachable (default `http://127.0.0.1:8080`) |
 | **ALLOW_LOCAL_CDP** | Only needed for **tokenless, loopback** `connect`. With a token set, `connect` uses the authenticated `/cdp` path (see below) |
-| **bdg ≥ 0.7.2** | Includes the `cloak` command group (`connect` auto-injects the Bearer token on the CDP WS) |
+| **bdg ≥ 0.7.3** | Includes the `cloak` command group with persona + analyze-detail sync (`connect` auto-injects the Bearer token on the CDP WS) |
 | **Auth token** | Required for `connect` over a tunnel/remote host (and recommended generally). Set `CBPM_API_TOKEN`. |
 
 ## Configuration
@@ -438,16 +438,19 @@ CreepJS, BrowserScan, Pixelscan, reCAPTCHA v3, Cloudflare Turnstile).
 bdg cloak get <id> --fingerprint
 ```
 
-Outputs a compact fingerprint-only view grouped by category:
+Outputs a compact fingerprint-only view grouped by category (the `persona`
+line appears at the top when a persona is applied):
 
 ```
+  persona:          win11-rtx3070-desktop
+
   ── fingerprint ──
   device-memory:    8 GB       hw-concurrency: 8
-  brand:            chrome    version: 120.0.6099.109
+  brand:            chrome    version: auto
   platform-version: 10.0.19045
   gpu:              Google Inc. (NVIDIA)
   gpu-renderer:     ANGLE (NVIDIA, NVIDIA GeForce RTX 3070 ... Direct3D11)
-  user-agent:       Mozilla/5.0 (Windows NT 10.0; Win64; x64)...
+  user-agent:       auto
 
   ── screen ──
   resolution:       1920x1080  scale: 1.0
@@ -472,12 +475,18 @@ Outputs a compact fingerprint-only view grouped by category:
      User-Agent is missing a Windows platform fragment.
 ```
 
+`version: auto` means the Sec-CH-UA brand version is **left unset** and
+derived from the CloakBrowser binary's Chromium version at launch — the
+recommended setting, since a UA ↔ brand-version mismatch is a classic bot
+tell. `user-agent: auto` likewise regenerates the UA from the binary.
+
 ### Key organic fields
 
 | Field | Flag | Why it matters |
 |---|---|---|
-| `device_memory` | `--device-memory 8` | `navigator.deviceMemory` — standard Chrome values: 0.25, 0.5, 1, 2, 4, 8 |
-| `brand` / `brand_version` | `--brand chrome --brand-version 120.0.6099.109` | Sec-CH-UA Client Hints headers |
+| `persona` | `--persona win11-rtx3070-desktop` | Coherent real-world device bundle — sets screen/GPU/cores/memory/DPR/platform-version together. Run `bdg cloak personas` for the list. |
+| `device_memory` | `--device-memory 8` | `navigator.deviceMemory` — real Chrome only reports 0.25/0.5/1/2/4/8 (capped at 8) |
+| `brand` / `brand_version` | `--brand chrome` (leave `--brand-version` unset) | Sec-CH-UA Client Hints; leave `--brand-version` unset to derive it from the CloakBrowser binary — a UA↔brand-version mismatch is a bot tell |
 | `platform_version` | `--platform-version 10.0.19045` | Sec-CH-UA-Platform-Version (Win: 10.0.19045, Mac: 13_5_1) |
 | `webrtc_ip` | `--webrtc-ip auto` | Spoofs WebRTC ICE candidates to proxy IP (auto-injected with proxy) |
 | `noise_enabled` | `--noise-enabled false` | Disable fingerprint noise for stable returning-user identity |
@@ -504,36 +513,109 @@ CBM validates these automatically and surfaces **coherence warnings** on
 profile responses. bdg shows them in `bdg cloak get` output as `⚠ coherence`
 blocks, and in `bdg cloak profiles` as a `⚠` indicator next to the profile.
 
-### Detection testing
+### Detection testing (live fingerprint verification)
 
 ```bash
-# Run an automated bot-detection test (headless, non-persistent)
+# Launch a one-shot headless copy of the profile and verify its LIVE
+# fingerprint against the profile's intended values:
 bdg cloak analyze <id>
 ```
 
-Outputs pass/fail per detection check:
+`analyze` is a *live* check, not a third-party scraper: CBM launches a
+throwaway headless copy of the profile, reads the real runtime signals from
+`about:blank` (navigator / userAgentData / screen / WebGL / voices / WebRTC /
+canvas), and compares each to the profile's configured value. Every check is
+graded pass / fail / warn and prints the **actual** value, the **expected**
+value, and a **detail** line explaining the result:
 
 ```
 Detection Test Results — 912925dd-...
-  Passed:  12
-  Failed:  2
+  Passed:  12   Failed:  2   Warnings: 1
 
   ── Checks ──
-  ✅ User Agent: OK
-  ✅ WebDriver: OK
-  ❌ WebGL: Fingerprint detected (GPU string mismatch)
-  ✅ Canvas: OK
-  ...
+  ✅ User Agent: actual="Mozilla/5.0 (Windows NT 10.0; Win64; x64) …" expected="Mozilla/5.0 (Windows NT 10.0; Win64; x64) …" — UA↔Sec-CH-UA major matches
+  ✅ WebDriver: actual=false expected=false — navigator.webdriver is not exposed
+  ❌ WebGL Renderer: actual="SwiftShader" expected="ANGLE (NVIDIA, NVIDIA GeForce RTX 3070 …)" — runtime renderer does not match the profile
+  ✅ deviceMemory: actual=8 expected=8 — within real-Chrome range
+  ⚠ WebRTC IP leak: actual=["1.2.3.4"] expected="proxy IP only" — could not verify against the proxy exit IP
+  …
+
   ⚠  Coherence Warnings (1):
      GPU renderer does not look like Windows (expected Direct3D11).
 ```
 
-The `analyze` command launches a headless copy of the profile, navigates to
-`bot.sannysoft.com`, extracts the test results, and cleans up automatically.
-Use it after configuring fingerprint fields to verify they pass before
-connecting for real work.
+- `pass` (✅) — the live value matches the profile.
+- `fail` (❌) — a real mismatch a detector would catch (UA↔brand drift, WebGL
+  renderer mismatch, `deviceMemory > 8`, timezone/IP disagreement, WebRTC leak).
+- `warn` (⚠) — couldn't verify (e.g. no proxy exit IP to compare WebRTC
+  against); not a failure, but worth a look.
+- **Coherence Warnings** — the static cross-field engine output (also shown on
+  `bdg cloak get`); these are fields that disagree *with each other*,
+  independent of what the page emits.
 
-### Creating an organic profile from scratch
+Run it after configuring fingerprint fields (or applying a persona) to confirm
+the values the binary **actually emits** match the profile before connecting
+for real work. `--json` returns the full report including the `raw` page
+readings.
+
+### Creating an organic profile (recommended: persona-first)
+
+The fastest path to an organic fingerprint is a **persona** — a curated,
+internally-consistent real-world device bundle (screen, GPU, cores, memory,
+DPR, platform version). Personas give a fleet **diversity** (so a detector
+can't cluster 50 profiles on an identical 1920×1080 + RTX 3070) without
+hand-tuning every field. Leave `--brand-version` and `--user-agent` unset so
+they derive from the CloakBrowser binary — the single most common bot tell is
+a UA ↔ Sec-CH-UA brand-version mismatch.
+
+```bash
+# List the curated device personas
+bdg cloak personas
+
+# Create from a persona + network/geo. The persona fills the hardware bundle;
+# you add the proxy/timezone/locale/geoip that match the proxy exit:
+bdg cloak create \
+  --name organic-win-us \
+  --persona win11-rtx3070-desktop \
+  --proxy "socks5://user:pass@us.host:1080" \
+  --timezone America/New_York \
+  --locale en-US \
+  --geoip \
+  --webrtc-ip auto \
+  --geolocation-lat 40.7128 \
+  --geolocation-lon -74.0060 \
+  --humanize \
+  --human-preset careful
+
+# Verify the live fingerprint matches the profile, then inspect it
+bdg cloak analyze organic-win-us
+bdg cloak get organic-win-us --fingerprint
+```
+
+### Identity rotation (new seed, same persona)
+
+To mint a fresh device identity that stays coherent, use `rotate-identity`
+(stronger than `reseed`): it draws a new full-entropy seed **and** re-applies
+the persona's hardware bundle, so you don't get a new canvas/audio identity
+bolted onto stale manual overrides:
+
+```bash
+# Same hardware persona, brand-new canvas/WebGL/audio/seed
+bdg cloak profile rotate-identity organic-win-us
+
+# New seed only, keep every other field (lighter — use when you just want
+# a fresh noise-derived fingerprint without touching the hardware bundle)
+bdg cloak profile reseed organic-win-us
+```
+
+Both take effect on the next launch.
+
+### Creating an organic profile from scratch (manual, no persona)
+
+If you need a device a persona doesn't cover, set the fields yourself — but
+keep them mutually consistent (see the [Platform consistency
+checklist](#platform-consistency-checklist)) and **leave `--brand-version`
+unset** so it tracks the binary:
 
 ```bash
 bdg cloak create \
@@ -550,7 +632,6 @@ bdg cloak create \
   --geolocation-lat 40.7128 \
   --geolocation-lon -74.0060 \
   --brand chrome \
-  --brand-version 120.0.6099.109 \
   --platform-version 10.0.19045 \
   --humanize \
   --human-preset careful
@@ -745,20 +826,25 @@ bdg cloak profile timezone proxy-tz-demo --timezone Europe/Berlin
 bdg cloak proxy-credentials
 ```
 
-### Reseed fingerprint or reset User-Agent
+### Reseed, rotate identity, or reset User-Agent
 
 ```bash
-# Generate a new random fingerprint seed (takes effect on next launch)
+# New full-entropy seed + re-apply the persona hardware bundle (coherent rotation)
+bdg cloak profile rotate-identity proxy-tz-demo
+
+# New random fingerprint seed only (same hardware, new canvas/audio/etc)
 bdg cloak profile reseed proxy-tz-demo
 
 # Clear an explicit User-Agent so CBM regenerates it on next launch
 bdg cloak profile reset-ua proxy-tz-demo
 ```
 
-All profile field changes (proxy, timezone, fingerprint seed, User-Agent) are
-persisted to the CBM database and take effect the next time the profile is
-launched. Restart the profile with `bdg cloak stop <id>` followed by
-`bdg cloak launch <id>` if it is currently running.
+All profile field changes (proxy, timezone, fingerprint seed, User-Agent,
+identity rotation) are persisted to the CBM database and take effect the next
+time the profile is launched. Restart the profile with `bdg cloak stop <id>`
+followed by `bdg cloak launch <id>` if it is currently running. See
+[Identity rotation](#identity-rotation-new-seed-same-persona) for when to
+prefer `rotate-identity` over `reseed`.
 
 ### Full-field updates still work
 
@@ -776,19 +862,21 @@ bdg cloak update proxy-tz-demo --user-agent "Mozilla/5.0 custom" --timezone Amer
 | `bdg cloak status` | CBM server health, running count, version, aggregate resources |
 | `bdg cloak profiles` | List profiles with status, tags, VNC port, resources column |
 | `bdg cloak get <id>` | Show a profile's full details (ID or name). `--fingerprint` for compact fingerprint view |
-| `bdg cloak create` | Create a profile — `--list-fields` / `--describe` are self-explaining |
+| `bdg cloak create` | Create a profile — `--list-fields` / `--describe` self-explain every field; `--persona <name>` applies a coherent device bundle |
 | `bdg cloak update <id>` | Partially update a profile (only provided fields change; ID or name) |
 | `bdg cloak delete <id>` | Delete a profile and its browser data (ID or name) |
 | `bdg cloak clone <id>` | Clone a profile with a new fingerprint seed (ID or name) |
 | `bdg cloak profile proxy <id>` | Change a profile's proxy (location, credential, group, URL, or none) |
 | `bdg cloak profile timezone <id>` | Set a profile's timezone |
-| `bdg cloak profile reseed <id>` | Generate a new random fingerprint seed |
+| `bdg cloak profile reseed <id>` | Generate a new random fingerprint seed (same hardware) |
+| `bdg cloak profile rotate-identity <id>` | New seed + re-apply the persona hardware bundle (coherent rotation) |
 | `bdg cloak profile reset-ua <id>` | Clear explicit User-Agent |
+| `bdg cloak personas` | List coherent device personas usable with `--persona` |
 | `bdg cloak proxy-credentials` | List saved proxy credentials |
 | `bdg cloak launch <id>` | Start a profile's browser |
 | `bdg cloak stop <id>` | Stop a running profile |
 | `bdg cloak connect <id> [url]` | Attach bdg session to a profile; `--force` resets first; auto-recovers on relaunch |
-| `bdg cloak analyze <id>` | Run one-shot bot-detection test (pass/fail per check + coherence warnings) |
+| `bdg cloak analyze <id>` | Live fingerprint verification — actual-vs-expected per check (pass/fail/warn) + coherence warnings |
 
 All commands support `--json` for machine-readable output and `--help`
 for inline documentation.
