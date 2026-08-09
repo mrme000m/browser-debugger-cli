@@ -426,142 +426,6 @@ The same data flows through:
 
 ---
 
-## Organic fingerprint configuration
-
-CloakBrowser-Manager supports a rich set of organic fingerprint fields that
-make browser profiles appear as real devices to anti-bot systems (FingerprintJS,
-CreepJS, BrowserScan, Pixelscan, reCAPTCHA v3, Cloudflare Turnstile).
-
-### Fingerprint-focused view
-
-```bash
-bdg cloak get <id> --fingerprint
-```
-
-Outputs a compact fingerprint-only view grouped by category:
-
-```
-  ── fingerprint ──
-  device-memory:    8 GB       hw-concurrency: 8
-  brand:            chrome    version: 120.0.6099.109
-  platform-version: 10.0.19045
-  gpu:              Google Inc. (NVIDIA)
-  gpu-renderer:     ANGLE (NVIDIA, NVIDIA GeForce RTX 3070 ... Direct3D11)
-  user-agent:       Mozilla/5.0 (Windows NT 10.0; Win64; x64)...
-
-  ── screen ──
-  resolution:       1920x1080  scale: 1.0
-  taskbar:          40px
-
-  ── geolocation ──
-  lat/lon:          40.7128, -74.0060
-  webrtc-ip:        auto (from proxy)
-
-  ── network ──
-  proxy:            socks5://...
-  timezone/locale:  America/New_York / en-US
-  geoip:            true  color-scheme: dark
-
-  ── hygiene ──
-  clear-on-launch:  yes  storage-quota: 4096MB
-  is-mobile:        false  has-touch: false
-  permissions:      geolocation, notifications
-
-  ⚠  coherence:     2 warnings
-     GPU renderer contains contradictory platform fragment...
-     User-Agent is missing a Windows platform fragment.
-```
-
-### Key organic fields
-
-| Field | Flag | Why it matters |
-|---|---|---|
-| `device_memory` | `--device-memory 8` | `navigator.deviceMemory` — standard Chrome values: 0.25, 0.5, 1, 2, 4, 8 |
-| `brand` / `brand_version` | `--brand chrome --brand-version 120.0.6099.109` | Sec-CH-UA Client Hints headers |
-| `platform_version` | `--platform-version 10.0.19045` | Sec-CH-UA-Platform-Version (Win: 10.0.19045, Mac: 13_5_1) |
-| `webrtc_ip` | `--webrtc-ip auto` | Spoofs WebRTC ICE candidates to proxy IP (auto-injected with proxy) |
-| `noise_enabled` | `--noise-enabled false` | Disable fingerprint noise for stable returning-user identity |
-| `geolocation_lat/lon` | `--geolocation-lat 40.7128 --geolocation-lon -74.0060` | Consistent geolocation API |
-| `clear_on_launch` | `--clear-on-launch` | Wipe cookies/cache before each launch (fresh sessions) |
-| `fonts_dir` | `--fonts-dir /data/fonts/win10` | Custom font directory (Windows-spoofing on Linux) |
-| `taskbar_height` | `--taskbar-height 40` | Affects availHeight (Windows: 40, macOS: 23) |
-| `device_scale_factor` | `--device-scale-factor 2.0` | Pixel ratio (1.0 desktop, 2.0 HiDPI) |
-| `is_mobile` / `has_touch` | `--is-mobile --has-touch` | Emulate mobile/touch devices |
-
-### Platform consistency checklist
-
-When configuring a profile, ensure these signals agree:
-
-| Signal | Windows | macOS | Linux |
-|--------|---------|-------|-------|
-| GPU renderer | ANGLE + Direct3D11 | ANGLE Metal | Vulkan/OpenGL |
-| UA fragment | Windows NT | Macintosh | Linux/X11 |
-| platform_version | 10.0.19045 | 13_5_1 | — |
-| Taskbar | 40px | 23px | 0 |
-| Chrome UI height | 133px | 91px | 80px |
-
-CBM validates these automatically and surfaces **coherence warnings** on
-profile responses. bdg shows them in `bdg cloak get` output as `⚠ coherence`
-blocks, and in `bdg cloak profiles` as a `⚠` indicator next to the profile.
-
-### Detection testing
-
-```bash
-# Run an automated bot-detection test (headless, non-persistent)
-bdg cloak analyze <id>
-```
-
-Outputs pass/fail per detection check:
-
-```
-Detection Test Results — 912925dd-...
-  Passed:  12
-  Failed:  2
-
-  ── Checks ──
-  ✅ User Agent: OK
-  ✅ WebDriver: OK
-  ❌ WebGL: Fingerprint detected (GPU string mismatch)
-  ✅ Canvas: OK
-  ...
-  ⚠  Coherence Warnings (1):
-     GPU renderer does not look like Windows (expected Direct3D11).
-```
-
-The `analyze` command launches a headless copy of the profile, navigates to
-`bot.sannysoft.com`, extracts the test results, and cleans up automatically.
-Use it after configuring fingerprint fields to verify they pass before
-connecting for real work.
-
-### Creating an organic profile from scratch
-
-```bash
-bdg cloak create \
-  --name organic-win-us \
-  --platform windows \
-  --gpu-vendor "Google Inc. (NVIDIA)" \
-  --gpu-renderer "ANGLE (NVIDIA, NVIDIA GeForce RTX 3070 Direct3D11 vs_5_0 ps_5_0, D3D11)" \
-  --hardware-concurrency 8 \
-  --device-memory 8 \
-  --timezone America/New_York \
-  --locale en-US \
-  --geoip \
-  --webrtc-ip auto \
-  --geolocation-lat 40.7128 \
-  --geolocation-lon -74.0060 \
-  --brand chrome \
-  --brand-version 120.0.6099.109 \
-  --platform-version 10.0.19045 \
-  --humanize \
-  --human-preset careful
-
-# Verify
-bdg cloak analyze organic-win-us
-bdg cloak get organic-win-us --fingerprint
-```
-
----
-
 ## Profile IDs and names
 
 `bdg cloak connect`, `get`, `update`, `delete`, and `clone` all accept either a
@@ -775,7 +639,7 @@ bdg cloak update proxy-tz-demo --user-agent "Mozilla/5.0 custom" --timezone Amer
 |---|---|
 | `bdg cloak status` | CBM server health, running count, version, aggregate resources |
 | `bdg cloak profiles` | List profiles with status, tags, VNC port, resources column |
-| `bdg cloak get <id>` | Show a profile's full details (ID or name). `--fingerprint` for compact fingerprint view |
+| `bdg cloak get <id>` | Show a profile's full details (ID or name) |
 | `bdg cloak create` | Create a profile — `--list-fields` / `--describe` are self-explaining |
 | `bdg cloak update <id>` | Partially update a profile (only provided fields change; ID or name) |
 | `bdg cloak delete <id>` | Delete a profile and its browser data (ID or name) |
@@ -788,7 +652,6 @@ bdg cloak update proxy-tz-demo --user-agent "Mozilla/5.0 custom" --timezone Amer
 | `bdg cloak launch <id>` | Start a profile's browser |
 | `bdg cloak stop <id>` | Stop a running profile |
 | `bdg cloak connect <id> [url]` | Attach bdg session to a profile; `--force` resets first; auto-recovers on relaunch |
-| `bdg cloak analyze <id>` | Run one-shot bot-detection test (pass/fail per check + coherence warnings) |
 
 All commands support `--json` for machine-readable output and `--help`
 for inline documentation.

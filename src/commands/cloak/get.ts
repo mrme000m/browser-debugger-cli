@@ -16,7 +16,7 @@ import { jsonOption } from '@/commands/shared/commonOptions.js';
 import type { BaseOptions } from '@/commands/shared/optionTypes.js';
 import { EXIT_CODES } from '@/utils/exitCodes.js';
 
-type GetOptions = BaseOptions & { fingerprint?: boolean };
+type GetOptions = BaseOptions;
 
 /**
  * Register the `cloak get` subcommand.
@@ -26,7 +26,6 @@ export function registerCloakGetCommand(program: Command): void {
     .command('get')
     .description("Show a CloakBrowser-managed profile's full details")
     .argument('<id>', 'Profile ID or name to fetch')
-    .option('--fingerprint', 'Show fingerprint-focused compact view (organic fields only)')
     .addOption(jsonOption())
     .action(async (id: string, options: GetOptions) => {
       await runCommand<GetOptions, CbmProfile>(
@@ -61,7 +60,7 @@ export function registerCloakGetCommand(program: Command): void {
           return { success: true, data };
         },
         options,
-        (p: CbmProfile) => formatProfile(p, options.fingerprint ?? false)
+        formatProfile
       );
     });
 }

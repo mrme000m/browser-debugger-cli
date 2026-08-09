@@ -103,33 +103,12 @@ export interface CbmProfile {
   gpu_vendor: string | null;
   gpu_renderer: string | null;
   hardware_concurrency: number | null;
-  // ── Organic fingerprint fields ──
-  device_memory: number | null;
-  brand: string | null;
-  brand_version: string | null;
-  platform_version: string | null;
-  fonts_dir: string | null;
-  storage_quota_mb: number | null;
-  taskbar_height: number | null;
-  geolocation_lat: number | null;
-  geolocation_lon: number | null;
-  webrtc_ip: string | null;
-  noise_enabled: boolean;
   humanize: boolean;
   human_preset: string;
-  human_config: Record<string, unknown> | null;
   headless: boolean;
   geoip: boolean;
   clipboard_sync: boolean;
   auto_launch: boolean;
-  // ── Session hygiene ──
-  clear_on_launch: boolean;
-  storage_state: Record<string, unknown> | null;
-  permissions: string[] | null;
-  device_scale_factor: number | null;
-  is_mobile: boolean;
-  has_touch: boolean;
-  extension_paths: string[] | null;
   color_scheme: string | null;
   launch_args: string[];
   notes: string | null;
@@ -145,8 +124,6 @@ export interface CbmProfile {
   cdp_url: string | null;
   cdp_endpoint: string | null;
   resources: CbmProfileResources | null;
-  // ── Coherence ──
-  coherence_warnings: string[];
 }
 
 // ── Profile status (runtime detail) ───────────────────────────────────────────
@@ -162,7 +139,6 @@ export interface CbmProfileStatus {
   effective_timezone: string | null;
   effective_locale: string | null;
   resources: CbmProfileResources | null;
-  coherence_warnings: string[];
 }
 
 // ── Launch result ─────────────────────────────────────────────────────────────
@@ -223,22 +199,6 @@ export interface CbmCdpTarget {
   url: string;
   webSocketDebuggerUrl: string;
   faviconUrl?: string;
-}
-
-// ── Detection report ─────────────────────────────────────────────────────────
-
-export interface CbmDetectionDetail {
-  test: string;
-  result: string;
-}
-
-export interface CbmDetectionReport {
-  profile_id: string;
-  passed: number;
-  failed: number;
-  details: CbmDetectionDetail[];
-  coherence_warnings: string[];
-  error?: string;
 }
 
 // ── API config ────────────────────────────────────────────────────────────────

@@ -14,7 +14,6 @@
  * - launch:            Start a browser profile
  * - stop:              Stop a running profile
  * - connect:           Bridge bdg session to a CBM-managed browser for inspection
- * - analyze:           Run bot-detection test against a profile (pass/fail per check)
  *
  * All cloak commands require the CBM server to be running and accessible.
  * Configure via CBPM_API_URL / CBPM_API_TOKEN env vars or ~/.cbpm/config.json.
@@ -22,7 +21,6 @@
 
 import type { Command } from 'commander';
 
-import { registerCloakAnalyzeCommand } from '@/commands/cloak/analyze.js';
 import { registerCloakCloneCommand } from '@/commands/cloak/clone.js';
 import { registerCloakConnectCommand } from '@/commands/cloak/connect.js';
 import { registerCloakCreateCommand } from '@/commands/cloak/create.js';
@@ -60,5 +58,4 @@ export function registerCloakCommands(program: Command): void {
   registerCloakLaunchCommand(cloak);
   registerCloakStopCommand(cloak);
   registerCloakConnectCommand(cloak);
-  registerCloakAnalyzeCommand(cloak);
 }
