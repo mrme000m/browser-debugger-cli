@@ -68,7 +68,8 @@ function formatProfiles(data: { profiles: CbmProfile[] }): string {
     const tagStr = p.tags.length > 0 ? ` [${p.tags.map((t) => t.tag).join(', ')}]` : '';
     const portInfo = p.vnc_ws_port ? ` VNC:${p.vnc_ws_port}` : '';
     const resInfo = formatResources(p);
-    return `  ${statusIcon} ${p.id}  ${p.name}${tagStr}  ${p.status}${portInfo}${resInfo}`;
+    const warnIcon = (p.coherence_warnings ?? []).length > 0 ? ' ⚠' : '';
+    return `  ${statusIcon} ${p.id}  ${p.name}${tagStr}  ${p.status}${portInfo}${warnIcon}${resInfo}`;
   });
 
   return joinLines(`${profiles.length} profile(s):`, ...lines);
