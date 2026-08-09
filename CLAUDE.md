@@ -227,9 +227,16 @@ bdg dom scroll "footer"      # Scroll to element (or --down 500, --bottom)
 
 # CDP
 bdg cdp Runtime.evaluate --params '{"expression":"document.title"}'
+
+# CloakBrowser Manager (CBM) profile integration
+bdg cloak status                                # CBM server + profile status
+bdg cloak profiles                              # List managed profiles
+bdg cloak connect proxy-tz-demo <url>         # Attach bdg to a CBM profile
+bdg cloak launch <id>                           # Start a profile's browser
+bdg cloak stop <id>                             # Stop a profile
 ```
 
-See `docs/CLI_REFERENCE.md` for complete reference.
+See `docs/cloak-integration.md` for setup and `docs/CLI_REFERENCE.md` for the complete reference.
 
 ---
 
