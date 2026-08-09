@@ -250,6 +250,14 @@ export type NetworkHarCommandOptions = BaseOptions & { outputFile?: string };
 /** Options for network headers command */
 export type NetworkHeadersCommandOptions = BaseOptions & { header?: string };
 
+/** Options for session commands */
+export type SessionCommandOptions = BaseOptions & {
+  domain?: string[];
+  source?: string;
+  force?: boolean;
+  url?: string;
+  profile?: string;
+};
 /**
  * Options for session start command.
  *
