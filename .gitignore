@@ -32,6 +32,15 @@ temp/
 # Demo output
 .bdg-demo/
 
+# Python artifacts
+__pycache__/
+*.py[cod]
+
+# Local scratch / tool noise
+backups/
+.firecrawl/
+decode_token.py
+
 # Workspace artifacts
 analysis/
 
@@ -44,3 +53,4 @@ docs/priv/
 
 # Claude Code agent worktrees
 .claude/worktrees/
+telemetry.json

@@ -1,0 +1,91 @@
+{
+  "username": "p2111378",
+  "memberSince": "2018-06-19T23:11:22.000Z",
+  "currency": "EUR",
+  "subscriptionData": {
+    "lastSubscriptionDate": "2018-06-19T23:11:22.000Z",
+    "expirationDate": "2019-06-19T23:11:22.000Z",
+    "freeDays": null,
+    "paymentProvider": "giftcard",
+    "isAutoRenewal": false,
+    "autoRecurring": false,
+    "resumable": false,
+    "active": false,
+    "hasPayments": false,
+    "hasAddons": false,
+    "addons": []
+  },
+  "paymentMethodUpdate": {},
+  "renewPlans": {
+    "plans": [
+      {
+        "plan": "three_years",
+        "originalPlan": "three_years",
+        "discountedPrice": true,
+        "fullPrice": "455,91 \u20ac",
+        "price": "70,00 \u20ac",
+        "pricePerMonth": "1,79 \u20ac",
+        "percentageSaved": "85%",
+        "renewalPlan": "three_years",
+        "renewalPrice": "70,00 \u20ac",
+        "freePeriod": [
+          {
+            "duration": "months",
+            "count": 3
+          }
+        ],
+        "bonusLicense": false,
+        "bonusLicenseProduct": {
+          "variation": "mac_cleaner",
+          "category": "license"
+        }
+      },
+      {
+        "plan": "yearly",
+        "originalPlan": "yearly",
+        "discountedPrice": true,
+        "fullPrice": "140,28 \u20ac",
+        "price": "37,19 \u20ac",
+        "pricePerMonth": "3,10 \u20ac",
+        "percentageSaved": null,
+        "renewalPlan": "yearly",
+        "renewalPrice": "37,19 \u20ac",
+        "freePeriod": null,
+        "bonusLicense": false,
+        "bonusLicenseProduct": {
+          "variation": "mac_cleaner",
+          "category": "license"
+        }
+      },
+      {
+        "plan": "monthly",
+        "originalPlan": "monthly",
+        "discountedPrice": false,
+        "fullPrice": "11,69 \u20ac",
+        "price": "11,69 \u20ac",
+        "pricePerMonth": "11,69 \u20ac",
+        "percentageSaved": null,
+        "renewalPlan": "monthly",
+        "renewalPrice": "11,69 \u20ac",
+        "freePeriod": null,
+        "bonusLicense": false,
+        "bonusLicenseProduct": {
+          "variation": "mac_cleaner",
+          "category": "license"
+        }
+      }
+    ],
+    "baseMonthlyPrice": "11,69 \u20ac"
+  },
+  "upgradePlans": [],
+  "renewSubscription": {},
+  "upgradeTemporarilyBlocked": true,
+  "subscriptionExtendable": true,
+  "reseller": false,
+  "showPriceUpBanner": false,
+  "cancellationFlowVariation": "regular",
+  "cancelFlow2Reservation": null,
+  "cancelFlow2PlanSwitch": null,
+  "referralDays": 30,
+  "refundPeriodDays": 30
+}

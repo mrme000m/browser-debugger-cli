@@ -27,6 +27,26 @@ export interface SessionMetadata {
   targetId?: string | undefined;
   webSocketDebuggerUrl?: string | undefined;
   activeTelemetry?: TelemetryType[] | undefined;
+  /**
+   * CDP auto-recovery summary, written by the worker each time it re-resolves
+   * the page target and reconnects after a WebSocket drop (e.g. a CBM profile
+   * relaunch). Surfaced by `bdg status` so users can see the session recovered.
+   */
+  recovery?: SessionRecovery | undefined;
+}
+
+/**
+ * Recovery summary recorded in session metadata.
+ */
+export interface SessionRecovery {
+  /** Total successful recoveries since session start. */
+  count: number;
+  /** Attempts made in the most recent recovery cycle. */
+  attempts: number;
+  /** Timestamp (ms epoch) of the most recent successful recovery. */
+  recoveredAt: number;
+  /** Reason for the most recent connection loss, if known. */
+  lastReason?: string | undefined;
 }
 
 /**
