@@ -2,6 +2,7 @@ import type { Command } from 'commander';
 
 import { registerCdpCommand } from '@/commands/cdp.js';
 import { registerCleanupCommand } from '@/commands/cleanup.js';
+import { registerCloakCommands } from '@/commands/cloak/index.js';
 import { registerConsoleCommand } from '@/commands/console.js';
 import { registerDetailsCommand } from '@/commands/details.js';
 import { registerFormInteractionCommands } from '@/commands/dom/formInteraction.js';
@@ -58,4 +59,7 @@ export const commandRegistry: CommandRegistrar[] = [
 
   addCommandGroup('Console Commands:'),
   registerConsoleCommand,
+
+  addCommandGroup('CloakBrowser Manager:'),
+  registerCloakCommands,
 ];

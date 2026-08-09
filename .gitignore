@@ -40,6 +40,7 @@ __pycache__/
 backups/
 .firecrawl/
 decode_token.py
+scripts/logs/
 
 # Workspace artifacts
 analysis/
@@ -53,3 +54,4 @@ docs/priv/
 
 # Claude Code agent worktrees
 .claude/worktrees/
+telemetry.json

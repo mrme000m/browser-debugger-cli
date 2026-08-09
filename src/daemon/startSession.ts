@@ -128,6 +128,8 @@ export async function launchSessionInWorker(
     headless: options.headless,
     chromeWsUrl: options.chromeWsUrl,
     chromeFlags: options.chromeFlags,
+    cdpHeaders: options.cdpHeaders,
+    cdpTargetListUrl: options.cdpTargetListUrl,
   });
 
   const currentDir = dirname(fileURLToPath(import.meta.url));

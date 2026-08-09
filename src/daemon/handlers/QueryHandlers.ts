@@ -73,6 +73,7 @@ export class QueryHandlers extends BaseHandler {
             targetId: metadata.targetId,
             webSocketDebuggerUrl: metadata.webSocketDebuggerUrl,
             activeTelemetry: metadata.activeTelemetry,
+            recovery: metadata.recovery,
           }) as Required<NonNullable<StatusResponseData['sessionMetadata']>>;
         }
 
