@@ -161,6 +161,8 @@ export async function startSession(
       headless: options.headless,
       chromeWsUrl: options.chromeWsUrl,
       chromeFlags: options.chromeFlags,
+      cdpHeaders: options.cdpHeaders,
+      cdpTargetListUrl: options.cdpTargetListUrl,
     }),
   });
 

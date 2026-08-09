@@ -588,6 +588,6 @@ See the DOM commands for complete working examples:
 
 ## Related Documentation
 
-- [Architecture Overview](./ARCHITECTURE.md)
-- [Session Management](./SESSION_MANAGEMENT.md)
-- [CDP Connection](./CDP_CONNECTION.md)
+- Architecture Overview
+- Session Management
+- CDP Connection

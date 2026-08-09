@@ -218,6 +218,12 @@ const OPTION_BEHAVIORS: Record<BehaviorKey, OptionBehavior> = {
     default: 'Basic session status (daemon running, session active, URL)',
     whenEnabled: 'Includes Chrome diagnostics and CDP connection details',
   },
+
+  'bdg:--cdp-headers': {
+    default: 'No custom headers sent on the CDP WebSocket upgrade',
+    whenEnabled:
+      'Sends the given JSON object as HTTP headers on the CDP WebSocket upgrade (e.g. {"Authorization":"Bearer X"}) to reach an authenticated or remote CDP endpoint. Also settable via BDG_CDP_HEADERS or the ~/.config/bdg/config.json `cdpHeaders` field.',
+  },
 };
 
 /**
