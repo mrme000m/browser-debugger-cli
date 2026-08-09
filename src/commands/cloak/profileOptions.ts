@@ -44,6 +44,8 @@ export function applyProfileOptions(cmd: Command): void {
       cmd.option(f.flag, f.description);
     } else if (f.type === 'int') {
       cmd.option(`${f.flag} <n>`, f.description, (v: string) => parseInt(v, 10));
+    } else if (f.type === 'float') {
+      cmd.option(`${f.flag} <n>`, f.description, (v: string) => parseFloat(v));
     } else if (f.type === 'list[string]') {
       cmd.option(`${f.flag} <v>`, `${f.description} (repeatable)`, collect, [] as string[]);
     } else if (f.type.startsWith('enum:')) {

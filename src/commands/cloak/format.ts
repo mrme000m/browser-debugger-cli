@@ -62,23 +62,114 @@ function formatResourcesLine(p: CbmProfile): string {
 }
 
 /** Format a single profile as a multi-line key/value block. */
-export function formatProfile(p: CbmProfile): string {
+export function formatProfile(p: CbmProfile, fingerprintMode = false): string {
   const tags = p.tags.map((t) => t.tag).join(', ') || '—';
   const proxy = proxyDisplay(p);
   const res = formatResourcesLine(p);
-  return joinLines(
+  const cohere = p.coherence_warnings;
+
+  const lines: (string | undefined)[] = [
     `${p.name}  ${p.is_template ? '[TEMPLATE]' : ''}  (${p.status})`,
     `  id:              ${p.id}`,
     `  platform:        ${p.platform}`,
     `  fingerprint_seed: ${p.fingerprint_seed}`,
-    `  proxy:            ${proxy}`,
-    `  timezone/locale:  ${p.timezone ?? '—'} / ${p.locale ?? '—'}`,
-    `  screen:           ${p.screen_width}x${p.screen_height}`,
-    `  humanize:         ${p.humanize ? `yes (${p.human_preset})` : 'no'}  geoip: ${p.geoip}  headless: ${p.headless}`,
-    `  auto_launch:      ${p.auto_launch}  restart_on_crash: ${p.restart_on_crash} (max ${p.max_restarts})`,
-    `  tags:             ${tags}`,
-    `  cdp_endpoint:     ${p.cdp_endpoint ?? '—'}`,
-    res ? `  resources:       ${res}` : undefined,
-    p.notes ? `  notes:           ${p.notes}` : undefined
-  );
+  ];
+
+  if (fingerprintMode) {
+    // ── Fingerprint-focused compact view ──
+    lines.push(undefined, '  ── fingerprint ──');
+    lines.push(
+      `  device-memory:    ${p.device_memory ?? '—'} GB       hw-concurrency: ${p.hardware_concurrency ?? '—'}`
+    );
+    lines.push(`  brand:            ${p.brand ?? 'auto'}    version: ${p.brand_version ?? 'auto'}`);
+    lines.push(`  platform-version: ${p.platform_version ?? '—'}`);
+    lines.push(`  gpu:              ${p.gpu_vendor ?? '—'}`);
+    lines.push(`  gpu-renderer:     ${p.gpu_renderer ?? '—'}`);
+    lines.push(`  fonts-dir:        ${p.fonts_dir ?? '—'}`);
+    lines.push(`  user-agent:       ${truncate(p.user_agent ?? 'auto', 60)}`);
+    if (p.noise_enabled !== undefined) {
+      lines.push(
+        `  noise:            ${p.noise_enabled ? 'enabled (unique per seed)' : 'disabled (stable identity)'}`
+      );
+    }
+
+    lines.push(undefined, '  ── screen ──');
+    const scale = p.device_scale_factor ? `  scale: ${p.device_scale_factor}` : '';
+    lines.push(`  resolution:       ${p.screen_width}x${p.screen_height}${scale}`);
+    const tb = p.taskbar_height != null ? `  taskbar: ${p.taskbar_height}px` : '';
+    if (tb) lines.push(tb);
+
+    lines.push(undefined, '  ── geolocation ──');
+    if (p.geolocation_lat != null && p.geolocation_lon != null) {
+      lines.push(`  lat/lon:          ${p.geolocation_lat}, ${p.geolocation_lon}`);
+    }
+    lines.push(`  webrtc-ip:        ${p.webrtc_ip ?? (proxy !== '—' ? 'auto (from proxy)' : '—')}`);
+
+    lines.push(undefined, '  ── network ──');
+    lines.push(`  proxy:            ${proxy}`);
+    lines.push(`  timezone/locale:  ${p.timezone ?? '—'} / ${p.locale ?? '—'}`);
+    lines.push(`  geoip:            ${p.geoip}  color-scheme: ${p.color_scheme ?? 'auto'}`);
+
+    lines.push(undefined, '  ── hygiene ──');
+    lines.push(
+      `  clear-on-launch:  ${p.clear_on_launch ? 'yes' : 'no'}  storage-quota: ${p.storage_quota_mb ? `${p.storage_quota_mb}MB` : '—'}`
+    );
+    lines.push(`  is-mobile:        ${p.is_mobile}  has-touch: ${p.has_touch}`);
+    const perms = (p.permissions ?? []).join(', ');
+    if (perms) lines.push(`  permissions:      ${perms}`);
+    const exts = (p.extension_paths ?? []).join(', ');
+    if (exts) lines.push(`  extensions:       ${exts}`);
+
+    lines.push(undefined, '  ── behavior ──');
+    lines.push(
+      `  humanize:         ${p.humanize ? `yes (${p.human_preset})` : 'no'}  headless: ${p.headless}`
+    );
+    lines.push(
+      `  auto_launch:      ${p.auto_launch}  restart: ${p.restart_on_crash} (max ${p.max_restarts})`
+    );
+  } else {
+    // ── Standard view ──
+    lines.push(`  proxy:            ${proxy}`);
+    lines.push(`  timezone/locale:  ${p.timezone ?? '—'} / ${p.locale ?? '—'}`);
+    lines.push(`  screen:           ${p.screen_width}x${p.screen_height}`);
+    lines.push(
+      `  gpu:              ${p.gpu_vendor ?? '—'} / ${truncate(p.gpu_renderer ?? '—', 50)}`
+    );
+    lines.push(
+      `  hw-concurrency:   ${p.hardware_concurrency ?? '—'}  device-memory: ${p.device_memory ? `${p.device_memory}GB` : '—'}`
+    );
+    lines.push(`  brand:            ${p.brand ?? 'auto'} v${p.brand_version ?? 'auto'}`);
+    lines.push(
+      `  webrtc-ip:        ${p.webrtc_ip ?? (proxy !== '—' ? 'auto' : '—')}  noise: ${p.noise_enabled ? 'on' : 'off'}`
+    );
+    lines.push(
+      `  humanize:         ${p.humanize ? `yes (${p.human_preset})` : 'no'}  geoip: ${p.geoip}  headless: ${p.headless}`
+    );
+    lines.push(
+      `  clear-on-launch:  ${p.clear_on_launch ? 'yes' : 'no'}  scale-factor: ${p.device_scale_factor ?? '—'}`
+    );
+    lines.push(
+      `  auto_launch:      ${p.auto_launch}  restart_on_crash: ${p.restart_on_crash} (max ${p.max_restarts})`
+    );
+    lines.push(`  tags:             ${tags}`);
+  }
+
+  lines.push(`  cdp_endpoint:     ${p.cdp_endpoint ?? '—'}`);
+  if (res) lines.push(`  resources:        ${res}`);
+  if (p.notes) lines.push(`  notes:            ${p.notes}`);
+
+  // ── Coherence warnings ──
+  if (cohere && cohere.length > 0) {
+    const label = `  ⚠  coherence:      ${cohere.length} warning${cohere.length > 1 ? 's' : ''}`;
+    lines.push(undefined, label);
+    for (const w of cohere) {
+      lines.push(`     ${w}`);
+    }
+  }
+
+  return joinLines(...lines);
+}
+
+function truncate(s: string, n: number): string {
+  return s.length <= n ? s : s.slice(0, n - 1) + '…';
 }
