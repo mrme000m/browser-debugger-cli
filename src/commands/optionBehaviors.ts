@@ -224,6 +224,27 @@ const OPTION_BEHAVIORS: Record<BehaviorKey, OptionBehavior> = {
     whenEnabled:
       'Sends the given JSON object as HTTP headers on the CDP WebSocket upgrade (e.g. {"Authorization":"Bearer X"}) to reach an authenticated or remote CDP endpoint. Also settable via BDG_CDP_HEADERS or the ~/.config/bdg/config.json `cdpHeaders` field.',
   },
+
+  'session export:--domain': {
+    default: 'Captures ALL cookies on the current page',
+    whenEnabled:
+      'Keeps only cookies whose domain contains any of the given repeats (e.g. --domain google.com). Saves auth tokens to a ~/.bdg/sessions/<name>.json file.',
+    automaticBehavior:
+      'Detects known auth tokens (SID, SSID, SAPISID, OSID, LSID, 1PSID) and flags the session as authenticated in export/validate output.',
+    tokenImpact: 'Cookie JSON is written to disk, not the terminal - negligible token cost.',
+  },
+  'session export:--force': {
+    default: 'Refuses to overwrite an existing session with the same name',
+    whenEnabled: 'Overwrites the saved session file',
+    automaticBehavior:
+      'Safe re-capture: replaces stale cookies so a logout on the live profile does not linger in the saved copy.',
+  },
+  'session import:--url': {
+    default: 'Injects cookies into the current page without navigating',
+    whenEnabled:
+      'Navigates to the given URL after injecting and reports whether a document title loaded (best-effort login confirmation)',
+    tokenImpact: 'One page navigation plus a single domEval title check.',
+  },
 };
 
 /**
