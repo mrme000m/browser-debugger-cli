@@ -87,7 +87,6 @@ export function registerStatusCommand(program: Command): void {
               targetId: data.sessionMetadata.targetId,
               webSocketDebuggerUrl: data.sessionMetadata.webSocketDebuggerUrl,
               activeTelemetry: data.sessionMetadata.activeTelemetry,
-              recovery: data.sessionMetadata.recovery,
             };
 
             latestMetadata = metadata;

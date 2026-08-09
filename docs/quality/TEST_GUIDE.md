@@ -282,4 +282,5 @@ bdg status --verbose  # Check Chrome diagnostics
 ## Related Documentation
 
 - [TESTING_PHILOSOPHY.md](./TESTING_PHILOSOPHY.md) - Test design principles
+- [SHELL_TEST_HARDENING.md](./SHELL_TEST_HARDENING.md) - Shell test reliability
 - [tests/README.md](../../tests/README.md) - Shell test details

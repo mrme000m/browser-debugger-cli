@@ -725,37 +725,6 @@ Console messages with objects are automatically expanded to show nested values:
 - Large objects truncated with `…` indicator
 - Special types formatted: Date, RegExp, Error, Map, Set
 
-## CloakBrowser Manager (CBM) Profile Commands
-
-`bdg cloak` integrates with [CloakBrowser Manager](https://github.com/CloakHQ/CloakBrowser-Manager)
-for fleet-scale browser profiles. It fully manages profiles and attaches bdg to
-a running profile over local network, Cloudflare tunnel, or SSH port forward.
-
-### Quick reference
-
-```bash
-bdg cloak status                      # server + running profile status
-bdg cloak profiles                    # list all profiles
-bdg cloak get <id>                    # full profile details (id or name)
-
-bdg cloak create --name shop-us-1 \
-  --timezone America/New_York --locale en-US \
-  --tag production --platform macos
-
-bdg cloak update <id> --notes "tweaked"
-bdg cloak clone <id> --name <clone-name>
-bdg cloak delete <id>
-
-bdg cloak launch <id>
-bdg cloak stop <id>
-
-# Attach bdg to a profile and navigate
-bdg cloak connect proxy-tz-demo https://www.yahoo.com/
-```
-
-All cloak commands support `--json` and `--help`. Setup, tunnel options, and
-troubleshooting are covered in [`docs/cloak-integration.md`](./cloak-integration.md).
-
 ## CDP Commands
 
 ### Protocol Introspection & Execution
@@ -844,35 +813,11 @@ bdg localhost:3000 --user-data-dir ~/custom # Custom Chrome profile directory
 # Chrome Options
 bdg localhost:3000 --headless                   # Launch Chrome in headless mode
 bdg localhost:3000 --chrome-ws-url <url>        # Connect to existing Chrome instance
-bdg localhost:3000 --cdp-headers '<json>'        # Custom headers on the CDP WS upgrade (e.g. Bearer auth)
 
 # Output Optimization
 bdg localhost:3000 --compact                    # Compact JSON (no indentation, 30% size reduction)
 bdg localhost:3000 --max-body-size 10           # Set max response body size (MB, default: 5)
 ```
-
-### CDP attach defaults (config file)
-
-`--chrome-ws-url` and `--cdp-headers` can be baked into a config file so they
-don't have to be passed every time (handy for an authenticated / remote CDP
-endpoint, e.g. a CloakBrowser Manager profile over a tunnel):
-
-```
-~/.config/bdg/config.json   (or $XDG_CONFIG_HOME/bdg/config.json, or $BDG_CONFIG_FILE)
-```
-
-```json
-{
-  "chromeWsUrl": "wss://cloak.example.com/api/profiles/<id>/cdp/devtools/page/<guid>",
-  "cdpHeaders": { "Authorization": "Bearer <token>" }
-}
-```
-
-Env overrides (precedence: CLI flag > env > file): `BDG_CHROME_WS_URL`,
-`BDG_CDP_HEADERS` (JSON object string), `BDG_CONFIG_FILE` (path).
-
-See [configuration.md](./configuration.md) for the full reference and
-[cloak-integration.md](./cloak-integration.md) for the CBM tunnel use case.
 
 ## Session Files
 
@@ -926,52 +871,9 @@ bdg stores session data in `~/.bdg/`:
 
 See [`src/types.ts`](../src/types.ts) for complete type definitions.
 
-## CloakBrowser Manager (`bdg cloak`)
-
-`bdg cloak` integrates with a CloakBrowser Manager instance. Configure the
-API URL and token via `CBPM_API_URL` / `CBPM_API_TOKEN` env vars or the shared
-`~/.cbpm/config.json` file.
-
-The examples below use a profile *name*; a profile UUID works too.
-
-### Status and discovery
-```bash
-bdg cloak status
-bdg cloak profiles
-bdg cloak get proxy-tz-demo
-bdg cloak proxy-credentials
-```
-
-### Quick profile tweaks
-```bash
-# Change proxy by IPVanish location code, credential UUID, group UUID, URL, or none
-bdg cloak profile proxy proxy-tz-demo --location us-nyc
-bdg cloak profile proxy proxy-tz-demo --credential <uuid>
-bdg cloak profile proxy proxy-tz-demo --group <uuid>
-bdg cloak profile proxy proxy-tz-demo --url socks5://u:p@host:1080
-bdg cloak profile proxy proxy-tz-demo --none
-
-# Change timezone
-bdg cloak profile timezone proxy-tz-demo --timezone Europe/Berlin
-
-# Reset identity fields
-bdg cloak profile reseed proxy-tz-demo     # new fingerprint seed
-bdg cloak profile reset-ua proxy-tz-demo  # clear explicit User-Agent
-```
-
-### Full-field update / launch / connect
-```bash
-bdg cloak update proxy-tz-demo --humanize --geoip --notes "shop account"
-bdg cloak launch proxy-tz-demo
-bdg cloak connect proxy-tz-demo https://example.com
-```
-
-See [`docs/cloak-integration.md`](./cloak-integration.md) for the full CBM walkthrough,
-tunnel setup, and troubleshooting.
-
 ## Related Documentation
 
 - **Architecture**: [`docs/architecture/BIDIRECTIONAL_IPC.md`](architecture/BIDIRECTIONAL_IPC.md) - Daemon/worker architecture
 - **Testing**: [`docs/quality/TESTING_PHILOSOPHY.md`](quality/TESTING_PHILOSOPHY.md) - Testing strategy
 - **Release Process**: [`docs/RELEASE_PROCESS.md`](RELEASE_PROCESS.md) - How to release new versions
-
+- **Docker**: [`docs/DOCKER.md`](DOCKER.md) - Running bdg in Docker containers

@@ -1,0 +1,245 @@
+<!-- captured_at=2026-08-09T21:19:44 doc={"url": "https://accounts.zoho.com/announcement/timezone-update?servicename=AaaServer&serviceurl=https%3A%2F%2Faccounts.zoho.com%2Fu%2Fh", "title": ""} -->
+<html><head>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+<title>
+	Update your time zone</title>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+<link href="https://static.zohocdn.com/iam/v2/components/css/zohoPuvi.c86bbb480e4a4fbc379fd8e7298bbde5.css" rel="stylesheet" type="text/css"><style>
+@font-face {
+  font-family: 'Announce';
+  src:  url('https://static.zohocdn.com/iam/v2/components/images/fonts/Announcement.9cfc02bc43cb929172be621069f8f58b.eot');
+  src:  url('https://static.zohocdn.com/iam/v2/components/images/fonts/Announcement.9cfc02bc43cb929172be621069f8f58b.eot') format('embedded-opentype'),
+    url('https://static.zohocdn.com/iam/v2/components/images/fonts/Announcement.c855ff466de5bd872629e4b6f38c7e0c.ttf') format('truetype'),
+    url('https://static.zohocdn.com/iam/v2/components/images/fonts/Announcement.ba961a29795cceed3d419910476002de.woff') format('woff'),
+    url('https://static.zohocdn.com/iam/v2/components/images/fonts/Announcement.5ba8b45a60d1a5f9cdcf756bf5600f10.svg') format('svg');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+[class^="icon-"], [class*=" icon-"] {
+  font-family: 'Announce' !important;
+  font-style: normal;
+  font-weight: normal;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+.icon-Country:before {
+  content: "\e907";
+}
+.icon-pebble:before {
+  content: "\e90b";
+}
+.icon-Timezone:before {
+  content: "\e910";
+}
+</style>
+
+<script src="https://static.zohocdn.com/iam/v2/components/tp_pkg/jquery-3.7.1.min.2c872dbe60f4ba70fb85356113d8b35e.js" type="text/javascript"></script><script src="https://static.zohocdn.com/iam/v2/components/js/common_unauth.345dd2a00f34a04dc1b289f9faf24261.js" type="text/javascript"></script><link href="https://static.zohocdn.com/iam/v2/components/css/flagIcons.a2ded49f8f36a9242b0b897d3d3ec1fc.css" rel="stylesheet" type="text/css"><link href="https://static.zohocdn.com/iam/v2/components/css/uvselect.d9f6ec36a7d8095603d552d7306cc0bc.css" rel="stylesheet" type="text/css"><script src="https://static.zohocdn.com/iam/v2/components/js/flagIcons.4c1816c4d81e3c8d93c153f729c1be5e.js" type="text/javascript"></script><script src="https://static.zohocdn.com/iam/v2/components/js/uvselect.19ecbae3dd105e8144bcc69a71134d09.js" type="text/javascript"></script><style>
+body {
+  margin: 0px;
+}
+.announcement_heading {
+  font-weight: 600;
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+.announcement_description {
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 24px;
+  color: #000000;
+  opacity: 0.8;
+  margin-bottom: 30px;
+}
+.list_dropdown_box {
+  width: 298px;
+  border: 1px solid #c7c7c7;
+  border-radius: 6px;
+  margin-bottom: 30px;
+  position: relative;
+}
+
+.list_dropdown_box_timezone {
+  width: 398px;
+}
+.list_dropdown {
+  display: none;
+  margin-top: -2px;
+  width: 316px;
+  max-height: 200px;
+  font-size: 15px;
+  list-style: none;
+  overflow: scroll;
+  padding: 0px;
+  z-index: 1;
+  position: absolute;
+  background: #ffffff;
+  border: 2px solid #e9e9e9;
+  color: #191818;
+  border-radius: 2px;
+}
+.list_dropdown > option {
+  padding: 8px 12px;
+  width: auto;
+  font-size: 15px;
+  cursor: pointer;
+}
+.list_dropdown > option:hover {
+  background-color: #f8f8f8;
+}
+.list_dropdown_box .basic_selectbox,
+.list_dropdown_box .basic_selectbox:hover {
+  border: none;
+  padding-top: 14px;
+}
+.select_arrow {
+  border: solid #dddddd;
+  border-width: 0px 2px 2px 0px;
+  display: inline-block;
+  padding: 3px;
+  float: right;
+  margin-top: 14px;
+}
+.down {
+  transform: rotate(45deg);
+  -webkit-transform: rotate(45deg);
+}
+.dropdown_label {
+  font-size: 11px;
+  display: block;
+  color: #1389e3;
+  pointer-events: none;
+  margin-top: 8px;
+  margin-left: 12px;
+  font-weight: 500;
+}
+.selected_option_info {
+  display: block;
+  margin-bottom: 4px;
+  cursor: default;
+}
+.default_value {
+  margin-top: 2px;
+  font-size: 15px;
+}
+.select_text {
+  display: inline-block;
+  width: 80%;
+  margin-top: 8px;
+  font-size: 15px;
+  color: #c1c1c1;
+}
+.update_profile {
+  background: #1389e3;
+  border-radius: 4px;
+  /* margin-top: 30px; */
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  color: #ffffff;
+  padding: 12px 28px;
+  text-align: center;
+}
+.update_profile:hover {
+  background: #0091ff;
+}
+.grey_text {
+  font-weight: 500;
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+  color: #9d9d9d;
+  margin-top: 40px;
+  float: right;
+}
+.container {
+  display: none;
+}
+.user_locale_container {
+  border: 1px solid #dcdcdc;
+  border-radius: 16px;
+  margin-bottom: 30px;
+}
+.container_header {
+  padding: 20px;
+  border-bottom: 1px solid #dcdcdc;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: default;
+  display: flex
+}
+.container_body {
+  padding: 25px 20px;
+  font-size: 15px;
+}
+.edit_text {
+  color: #0091ff;
+  cursor: pointer;
+  margin-left: auto;
+  word-break: break-word;
+}
+
+.current_country_box {
+  margin-bottom: 20px;
+}
+.current_locale_icon {
+  font-size: 14px;
+  padding: 8px;
+  color: #1389e3;
+  border-radius: 12px;
+  background-color: rgba(19, 137, 227, 0.06);
+  display: inline-block;
+  margin-right: 10px;
+}
+.current_locale_value {
+  display: inline-block;
+  font-weight: 500;
+  opacity: 0.8;
+  width: auto;
+  line-height: 1.2;
+  vertical-align: text-top;
+  text-transform: capitalize;
+}
+.timezone_value {
+  width: 80%;
+}
+.leading_icon {
+  margin-left: 14px;
+  margin-bottom: 10px;
+}
+.dropdown_label {
+  position: absolute;
+  top: 0px;
+  z-index: 1;
+}
+.select_input {
+  padding-bottom: 10px;
+}
+.selectbox_arrow {
+  width: 6px;
+  height: 6px;
+  border: 2px solid #a4a4a4;
+  transform: rotate(45deg);
+  border-top: none;
+  border-left: none;
+  margin-top: 6px;
+}
+.selectbox_arrow b {
+  display: none;
+}
+.error_space {
+  position: fixed;
+  width: fit-content;
+  width: -moz-fit-content;
+  left: 0px;
+  right: 0px;
+  margin: auto;
+  border: 1px solid #fcd8dc;
+  display: flex;
+  align-items: center;
+  padding: 18p

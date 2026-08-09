@@ -58,8 +58,6 @@ export interface ConnectionOptions {
   onReconnect?: (() => Promise<void>) | undefined;
   /** Async hook invoked when WebSocket closes unexpectedly */
   onDisconnect?: ((code: number, reason: string) => void | Promise<void>) | undefined;
-  /** Custom HTTP headers sent on the WebSocket upgrade request (e.g. Authorization: Bearer <token>) */
-  headers?: Record<string, string>;
 }
 
 /**

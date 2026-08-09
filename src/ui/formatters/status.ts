@@ -1,6 +1,6 @@
 import { getChromeDiagnostics } from '@/connection/diagnostics.js';
 import type { SessionActivity, PageState } from '@/ipc/index.js';
-import type { SessionMetadata, SessionRecovery } from '@/session/metadata.js';
+import type { SessionMetadata } from '@/session/metadata.js';
 import { calculateDuration, formatTimeAgo } from '@/session/statusData.js';
 import { OutputFormatter } from '@/ui/formatting.js';
 import { formatDiagnosticsForStatus } from '@/ui/messages/chrome.js';
@@ -25,8 +25,6 @@ export interface StatusData {
   warning?: string;
   activity?: SessionActivity;
   pageState?: PageState;
-  /** CDP auto-recovery summary (set after the session recovered from a drop). */
-  recovery?: SessionRecovery | undefined;
 }
 
 /**
@@ -105,15 +103,6 @@ export function formatSessionStatus(
     18
   );
 
-  if (metadata.recovery && metadata.recovery.count > 0) {
-    fmt.blank().text('Recovery').separator('━', 50);
-    fmt.keyValue('Recoveries', String(metadata.recovery.count), 18);
-    fmt.keyValue('Last Recovered', formatTimeAgo(metadata.recovery.recoveredAt), 18);
-    if (metadata.recovery.lastReason) {
-      fmt.keyValue('Last Reason', metadata.recovery.lastReason, 18);
-    }
-  }
-
   if (verbose) {
     fmt.blank().text('Chrome Diagnostics').separator('━', 50);
 
@@ -176,7 +165,6 @@ export function formatStatusAsJson(
     targetId: metadata.targetId,
     webSocketDebuggerUrl: metadata.webSocketDebuggerUrl,
     telemetry: metadata.activeTelemetry ?? ['network', 'console', 'dom'],
-    recovery: metadata.recovery,
   };
 }
 

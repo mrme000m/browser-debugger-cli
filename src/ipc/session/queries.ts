@@ -37,12 +37,6 @@ export interface StatusResponseData {
     targetId?: string;
     webSocketDebuggerUrl?: string;
     activeTelemetry?: TelemetryType[];
-    recovery?: {
-      count: number;
-      attempts: number;
-      recoveredAt: number;
-      lastReason?: string | undefined;
-    };
   };
   /** Session activity metrics. */
   activity?: SessionActivity;

@@ -11,12 +11,11 @@ import { ConnectionError } from '@/connection/errors.js';
 import { WorkerError } from '@/daemon/errors.js';
 import { setupCDPAndNavigate } from '@/daemon/lifecycle/cdpSetup.js';
 import { setupChromeConnection } from '@/daemon/lifecycle/chromeConnection.js';
-import { runCdpRecovery } from '@/daemon/lifecycle/recovery.js';
 import { setupSignalHandlers } from '@/daemon/lifecycle/signalHandlers.js';
 import { cleanupWorker } from '@/daemon/lifecycle/workerCleanup.js';
 import { parseWorkerConfig } from '@/daemon/lifecycle/workerConfig.js';
 import { setupStdinListener } from '@/daemon/lifecycle/workerIpc.js';
-import { workerExitingConnectionLoss, workerSessionActive } from '@/daemon/messages.js';
+import { workerSessionActive } from '@/daemon/messages.js';
 import { TelemetryStore } from '@/daemon/worker/TelemetryStore.js';
 import { createCommandRegistry } from '@/daemon/worker/commandRegistry.js';
 import type { WorkerReadyMessage } from '@/daemon/workerIpc.js';
@@ -34,10 +33,6 @@ const commandRegistry = createCommandRegistry(telemetryStore);
 let chrome: LaunchedChrome | null = null;
 let cdp: CDPConnection | null = null;
 let cleanupFunctions: CleanupFunction[] = [];
-/** True while a CDP recovery loop is in flight (guards against nested loops). */
-let recovering = false;
-/** Total successful CDP recoveries this session (for metadata/status). */
-let recoveryCount = 0;
 
 /**
  * Send worker_ready signal to parent via stdout.
@@ -97,103 +92,16 @@ async function main(): Promise<void> {
 
     chrome = await setupChromeConnection(config, telemetryStore, log, notify);
 
-    /**
-     * Handle a CDP WebSocket drop. With a cdpTargetListUrl configured (cloak
-     * path), re-resolve the current page target and reconnect automatically;
-     * otherwise fall back to the legacy cleanup-and-exit. `recovering` guards
-     * against nested loops — runCdpRecovery retries internally.
-     */
-    const handleCdpDisconnect = (): void => {
-      if (recovering) {
-        log.info('CDP disconnect during recovery — ignored (in-flight recovery will handle it)');
-        return;
-      }
-      if (!cdp) {
-        return; // defensive: no connection to recover
-      }
-      if (!config.cdpTargetListUrl) {
-        void cleanupWorker('crash', {
-          chrome,
-          cdp,
-          cleanupFunctions,
-          telemetryStore,
-          log,
-          notify,
-        }).then(() => process.exit(1));
-        return;
-      }
-      const cdpConn = cdp;
-      recovering = true;
-      void (async () => {
-        try {
-          const recovered = await runCdpRecovery({
-            cdp: cdpConn,
-            config,
-            telemetryStore,
-            chrome,
-            log,
-            onDisconnect: handleCdpDisconnect,
-            isStopped: () => false,
-          });
-          if (recovered) {
-            cleanupFunctions = recovered.cleanupFunctions;
-            recoveryCount++;
-            writeSessionMetadata({
-              bdgPid: process.pid,
-              chromePid: chrome?.pid ?? 0,
-              startTime: telemetryStore.sessionStartTime,
-              port: config.port,
-              targetId: recovered.target.id,
-              webSocketDebuggerUrl: recovered.target.webSocketDebuggerUrl,
-              activeTelemetry: telemetryStore.activeTelemetry,
-              recovery: {
-                count: recoveryCount,
-                attempts: recovered.attempts,
-                recoveredAt: Date.now(),
-                lastReason: recovered.lastReason,
-              },
-            });
-            console.error(`[worker] Session metadata refreshed after recovery #${recoveryCount}`);
-            log.info(`recovery complete (total ${recoveryCount})`);
-          } else {
-            // Exhausted or aborted — fall back to legacy cleanup + exit.
-            log.debug(workerExitingConnectionLoss());
-            await cleanupWorker('crash', {
-              chrome,
-              cdp: cdpConn,
-              cleanupFunctions,
-              telemetryStore,
-              log,
-              notify,
-            });
-            process.exit(1);
-          }
-        } catch (error) {
-          console.error(
-            `[worker] Recovery error: ${error instanceof Error ? error.message : String(error)}`
-          );
-          await cleanupWorker('crash', {
-            chrome,
-            cdp: cdpConn,
-            cleanupFunctions,
-            telemetryStore,
-            log,
-            notify,
-          });
-          process.exit(1);
-        } finally {
-          recovering = false;
-        }
-      })();
-    };
-
-    const result = await setupCDPAndNavigate(
-      config,
-      telemetryStore,
-      chrome,
-      log,
-      handleCdpDisconnect
-    );
+    const result = await setupCDPAndNavigate(config, telemetryStore, chrome, log, () => {
+      void cleanupWorker('crash', {
+        chrome,
+        cdp,
+        cleanupFunctions,
+        telemetryStore,
+        log,
+        notify,
+      }).then(() => process.exit(1));
+    });
 
     cdp = result.cdp;
     cleanupFunctions = result.cleanupFunctions;

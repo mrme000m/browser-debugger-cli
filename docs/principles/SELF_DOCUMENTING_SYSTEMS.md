@@ -799,8 +799,8 @@ Self-documenting systems represent a paradigm shift in tool design for autonomou
 
 **See Also**:
 - [AGENT_FRIENDLY_TOOLS.md](./AGENT_FRIENDLY_TOOLS.md) - Foundational principles
-- TYPE_SAFE_CDP - Implementation details
-- [CLI_REFERENCE.md](../CLI_REFERENCE.md) - Human-focused documentation
+- [TYPE_SAFE_CDP.md](./TYPE_SAFE_CDP.md) - Implementation details
+- [CLI_REFERENCE.md](./CLI_REFERENCE.md) - Human-focused documentation
 
 **References**:
 - Chrome DevTools Protocol: https://chromedevtools.github.io/devtools-protocol/

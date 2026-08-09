@@ -2,13 +2,13 @@ import type { Command } from 'commander';
 
 import { registerCdpCommand } from '@/commands/cdp.js';
 import { registerCleanupCommand } from '@/commands/cleanup.js';
-import { registerCloakCommands } from '@/commands/cloak/index.js';
 import { registerConsoleCommand } from '@/commands/console.js';
 import { registerDetailsCommand } from '@/commands/details.js';
 import { registerFormInteractionCommands } from '@/commands/dom/formInteraction.js';
 import { registerDomCommands } from '@/commands/dom/index.js';
 import { registerNetworkCommands } from '@/commands/network/index.js';
 import { registerPeekCommand } from '@/commands/peek.js';
+import { registerSessionCommands } from '@/commands/session.js';
 import { registerStartCommands } from '@/commands/start.js';
 import { registerStatusCommand } from '@/commands/status.js';
 import { registerStopCommand } from '@/commands/stop.js';
@@ -40,6 +40,9 @@ export const commandRegistry: CommandRegistrar[] = [
   registerStopCommand,
   registerCleanupCommand,
 
+  addCommandGroup('Authenticated Sessions:'),
+  registerSessionCommands,
+
   addCommandGroup('Data Inspection:'),
   registerPeekCommand,
   registerTailCommand,
@@ -55,7 +58,4 @@ export const commandRegistry: CommandRegistrar[] = [
 
   addCommandGroup('Console Commands:'),
   registerConsoleCommand,
-
-  addCommandGroup('CloakBrowser Manager:'),
-  registerCloakCommands,
 ];

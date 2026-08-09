@@ -53,25 +53,9 @@ bdg dom query "button"             # High-level helpers
 bdg stop                           # End session
 ```
 
-## CloakBrowser Manager integration
-
-`bdg cloak` manages and connects to [CloakBrowser Manager](https://github.com/CloakHQ/CloakBrowser-Manager) profiles. Quickly rotate proxies, timezones, fingerprint seeds, and User-Agent overrides:
-
-```bash
-bdg cloak profiles
-bdg cloak profile proxy my-profile --location us-nyc
-bdg cloak profile timezone my-profile --timezone Europe/Berlin
-bdg cloak profile reseed my-profile
-bdg cloak profile reset-ua my-profile
-```
-
-See [`docs/cloak-integration.md`](docs/cloak-integration.md) for setup, tunnel usage, and the full command reference.
-
 ## Current State
 
 **Raw CDP access is complete.** All 644 protocol methods (53 domains) work now. High-level wrappers (`bdg dom`, `bdg network`) are being added for common operations. See [Commands](https://github.com/szymdzum/browser-debugger-cli/wiki/Commands) for full reference.
-
-The `bdg cloak` command group is available for CloakBrowser Manager profile orchestration.
 
 ## Agent Discovery Pattern
 
@@ -89,11 +73,7 @@ bdg cdp --search cookie                     # 14 results
 
 ## Documentation
 
-📖 **[CLI Reference](docs/CLI_REFERENCE.md)** - Complete command catalog, including `bdg cloak`  
-🔌 **[CloakBrowser Manager Integration](docs/cloak-integration.md)** - Manage and inspect CBM profiles  
-🤖 **[CLAUDE.md](CLAUDE.md)** - Agent development guide and common patterns  
-
-📖 **[Wiki](https://github.com/szymdzum/browser-debugger-cli/wiki)** - Additional guides and recipes
+📖 **[Wiki](https://github.com/szymdzum/browser-debugger-cli/wiki)** - Guides, command reference, recipes
 
 - [Getting Started](https://github.com/szymdzum/browser-debugger-cli/wiki/Getting-Started)
 - [Commands](https://github.com/szymdzum/browser-debugger-cli/wiki/Commands)

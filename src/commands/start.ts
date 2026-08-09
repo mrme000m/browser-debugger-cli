@@ -5,7 +5,6 @@ import type { Command } from 'commander';
 import { handleValidationError } from '@/commands/shared/handleValidationError.js';
 import { startSessionViaDaemon } from '@/commands/shared/startHelpers.js';
 import { positiveIntRule } from '@/commands/shared/validation.js';
-import { getBdgConfig, parseHeadersObject } from '@/config/bdgConfig.js';
 import { PORT_OPTION_DESCRIPTION } from '@/constants.js';
 import { CommandError } from '@/errors/index.js';
 import type { TelemetryType } from '@/types';
@@ -37,8 +36,6 @@ interface CollectorOptions {
   quiet?: boolean;
   /** Custom Chrome flags (space-separated string). */
   chromeFlags?: string;
-  /** Custom HTTP headers for the CDP WebSocket upgrade, as a JSON string (e.g. '\{"Authorization":"Bearer X"\}'). */
-  cdpHeaders?: string;
 }
 
 /**
@@ -124,10 +121,6 @@ function applyCollectorOptions(command: Command): Command {
     .option(
       '--chrome-flags <flags>',
       'Custom Chrome flags (space-separated, e.g., --chrome-flags="--ignore-certificate-errors --disable-web-security")'
-    )
-    .option(
-      '--cdp-headers <json>',
-      'Custom HTTP headers for the CDP WebSocket upgrade (JSON string, e.g. \'{"Authorization":"Bearer X"}\')'
     );
 }
 
@@ -137,10 +130,7 @@ function applyCollectorOptions(command: Command): Command {
  * @param options - Parsed command-line options from Commander
  * @returns Session options object with parsed and normalized values
  */
-function buildSessionOptions(
-  options: CollectorOptions,
-  cfg: ReturnType<typeof getBdgConfig> = getBdgConfig()
-): {
+function buildSessionOptions(options: CollectorOptions): {
   port: number;
   timeout: number | undefined;
   userDataDir: string | undefined;
@@ -151,13 +141,6 @@ function buildSessionOptions(
   chromeWsUrl: string | undefined;
   quiet: boolean;
   chromeFlags: string[] | undefined;
-  cdpHeaders: Record<string, string> | undefined;
-  /**
-   * HTTP endpoint to re-query for the live CDP page-target list (worker
-   * recovery). The general `bdg <url>` path does not recover, so this is
-   * always undefined here; `bdg cloak connect` sets it.
-   */
-  cdpTargetListUrl: string | undefined;
 } {
   const maxBodySizeRule = positiveIntRule({ min: 1, max: 100, required: false });
   const timeoutRule = positiveIntRule({ min: 1, max: 3600, required: false });
@@ -180,11 +163,6 @@ function buildSessionOptions(
 
   const chromeFlags = combinedFlags.length > 0 ? combinedFlags : undefined;
 
-  // Resolve CDP attach defaults. Precedence: CLI flag > env var (BDG_*) > config
-  // file (~/.config/bdg/config.json). cdpHeaders: CLI --cdp-headers (JSON string)
-  // > BDG_CDP_HEADERS / config file. See src/config/bdgConfig.ts.
-  const cdpHeaders = parseHeadersObject(options.cdpHeaders) ?? cfg.cdpHeaders;
-
   return {
     port: parseInt(options.port, 10),
     timeout,
@@ -193,11 +171,9 @@ function buildSessionOptions(
     maxBodySize: maxBodySizeMB !== undefined ? maxBodySizeMB * 1024 * 1024 : undefined,
     compact: options.compact ?? false,
     headless: options.headless ?? !hasDisplay(),
-    chromeWsUrl: options.chromeWsUrl ?? cfg.chromeWsUrl,
+    chromeWsUrl: options.chromeWsUrl,
     quiet: options.quiet ?? false,
     chromeFlags,
-    cdpHeaders,
-    cdpTargetListUrl: undefined,
   };
 }
 
@@ -208,12 +184,8 @@ function buildSessionOptions(
  * @param options - Parsed command-line options from Commander
  * @returns Promise that resolves when session completes or is stopped
  */
-async function collectorAction(
-  url: string,
-  options: CollectorOptions,
-  cfg: ReturnType<typeof getBdgConfig> = getBdgConfig()
-): Promise<void> {
-  const sessionOptions = buildSessionOptions(options, cfg);
+async function collectorAction(url: string, options: CollectorOptions): Promise<void> {
+  const sessionOptions = buildSessionOptions(options);
 
   const telemetry: TelemetryType[] = ['dom', 'network', 'console'];
 
@@ -235,21 +207,16 @@ export function registerStartCommands(program: Command): void {
       process.exit(0);
     }
 
-    // Resolve CDP attach defaults once: CLI flag > env var (BDG_*) > config file.
-    const cfg = getBdgConfig();
-
     try {
       assertValidUrl(url);
-      // Validate the effective WS URL regardless of source (CLI / env / file).
-      const effectiveChromeWsUrl = options.chromeWsUrl ?? cfg.chromeWsUrl;
-      if (effectiveChromeWsUrl !== undefined) {
-        assertValidChromeWsUrl(effectiveChromeWsUrl);
+      if (options.chromeWsUrl !== undefined) {
+        assertValidChromeWsUrl(options.chromeWsUrl);
       }
     } catch (error) {
       handleValidationError(error, false);
     }
 
-    await collectorAction(url, options, cfg);
+    await collectorAction(url, options);
   });
 }
 
