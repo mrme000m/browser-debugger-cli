@@ -12,6 +12,9 @@
  * - profile:          Quick profile tweaks (proxy, timezone, reseed, reset-ua, rotate-identity)
  * - personas:         List coherent device personas usable with --persona
  * - proxy-credentials: List saved proxy credentials
+ * - storage-state:    Upload / clear / inspect a profile's pre-seeded session state
+ * - check:            Static coherence dry-run (no browser launch; exit 1 on warnings)
+ * - human-config:     List overridable --human-config keys (SDK HumanConfigOverrides)
  * - launch:           Start a browser profile
  * - stop:             Stop a running profile
  * - connect:          Bridge bdg session to a CBM-managed browser for inspection
@@ -24,17 +27,20 @@
 import type { Command } from 'commander';
 
 import { registerCloakAnalyzeCommand } from '@/commands/cloak/analyze.js';
+import { registerCloakCheckCommand } from '@/commands/cloak/check.js';
 import { registerCloakCloneCommand } from '@/commands/cloak/clone.js';
 import { registerCloakConnectCommand } from '@/commands/cloak/connect.js';
 import { registerCloakCreateCommand } from '@/commands/cloak/create.js';
 import { registerCloakDeleteCommand } from '@/commands/cloak/delete.js';
 import { registerCloakGetCommand } from '@/commands/cloak/get.js';
+import { registerCloakHumanConfigCommand } from '@/commands/cloak/humanConfig.js';
 import { registerCloakLaunchCommand, registerCloakStopCommand } from '@/commands/cloak/launch.js';
 import { registerCloakPersonasCommand } from '@/commands/cloak/personas.js';
 import { registerCloakProfileCommand } from '@/commands/cloak/profile.js';
 import { registerCloakProfilesCommand } from '@/commands/cloak/profiles.js';
 import { registerCloakProxyCredentialsCommand } from '@/commands/cloak/proxyCredentials.js';
 import { registerCloakStatusCommand } from '@/commands/cloak/status.js';
+import { registerCloakStorageStateCommand } from '@/commands/cloak/storageState.js';
 import { registerCloakUpdateCommand } from '@/commands/cloak/update.js';
 
 /**
@@ -60,6 +66,9 @@ export function registerCloakCommands(program: Command): void {
   registerCloakProfileCommand(cloak);
   registerCloakPersonasCommand(cloak);
   registerCloakProxyCredentialsCommand(cloak);
+  registerCloakStorageStateCommand(cloak);
+  registerCloakCheckCommand(cloak);
+  registerCloakHumanConfigCommand(cloak);
   registerCloakLaunchCommand(cloak);
   registerCloakStopCommand(cloak);
   registerCloakConnectCommand(cloak);

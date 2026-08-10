@@ -279,6 +279,19 @@ bdg cloak create --name shop-us-1 \
 > silently ignores those four — bdg does not share that bug.) Tags use an
 > optional `tag:color` form (`--tag us:blue`).
 
+> **JSON fields are parsed, not forwarded raw:** `--storage-state` and
+> `--human-config` accept JSON objects. `--storage-state` takes a **file path**
+> (or inline JSON) to a Playwright `storage_state` file; `--human-config` takes
+> **inline JSON** of `HumanConfigOverrides` keys. bdg parses them to objects
+> before sending — passing the raw string would be HTTP 422 (the backend fields
+> are dicts). Unknown `--human-config` keys warn (the SDK silently ignores
+> them — see `bdg cloak human-config`).
+>
+> ```bash
+> bdg cloak create --name shop --humanize --human-config '{"typing_delay":120}'
+> bdg cloak create --name shop --storage-state ./warm-session.json
+> ```
+
 ### `bdg cloak update <id>`
 
 Partially update a profile — **only the flags you pass are sent** (the server
@@ -293,6 +306,72 @@ bdg cloak update 912925dd… --no-clipboard-sync
 > **Tags are replaced, not appended** — passing `--tag` sets the whole tag set;
 > omit it to leave tags unchanged. With no flags at all, `update` errors
 > (exit `81`) and points you to `--list-fields`.
+
+> **`--persona` on `update` only stores the name** — it does **not** re-apply the
+> persona's coherent hardware bundle (screen/GPU/cores/memory/DPR). Use
+> `bdg cloak profile rotate-identity <id>` for a fresh coherent identity, or set
+> the individual fields explicitly.
+
+### `bdg cloak storage-state <id>` — pre-seeded session state
+
+Manage a profile's stored Playwright `storage_state` (cookies + localStorage
+origins). CBM applies it on launch — cookies via `context.add_cookies`
+(browser-level, persists across sessions), localStorage via a route-fulfilled
+no-network page navigation that writes to the profile's on-disk storage (so it
+survives a `connect_over_cdp` / fresh-session read; `clear_on_launch` wipes first if enabled).
+Warm a profile with a logged-in session before its first launch:
+
+```bash
+# Upload a storage_state JSON file (cookies and/or origins)
+bdg cloak storage-state shop-us-1 --file ./warm-session.json
+#  Uploaded storage_state for shop-us-1
+#    cookies: 12   origins: 3
+
+# Inspect what's currently stored (read-only, no API write)
+bdg cloak storage-state shop-us-1
+#  Stored storage_state for shop-us-1
+#    cookies: 12   origins: 3
+
+# Drop the stored state
+bdg cloak storage-state shop-us-1 --clear
+#  Cleared stored storage_state for shop-us-1
+```
+
+`--file` reads + validates the file as a Playwright `storage_state` dict (must
+contain `cookies` and/or `origins`); `--clear` sets it to null; with no flag it
+summarizes the stored state. `--json` is supported.
+
+### `bdg cloak check <id>` — coherence dry-run (no browser launch)
+
+A fast, proxy-free profile lint. CBM computes `coherence_warnings` statically on
+every profile read (`fingerprint_coherence.analyze_profile`), so `check`
+surfaces them without launching a browser — ideal for a tuning loop. Exits `0`
+when coherent, `1` (linter contract) when any warnings exist.
+
+```bash
+$ bdg cloak check shop-us-1
+Coherence Check — shop-us-1
+  warnings: 0
+
+  ✓ coherent — no static cross-field warnings.
+  Run `bdg cloak analyze shop-us-1` for a live browser check (launches a one-shot headless copy).
+```
+
+With warnings it lists each one and points at `bdg cloak update`. For the live
+actual-vs-expected verification (which launches a headless copy and reads the
+real fingerprint signals), use `bdg cloak analyze <id>` instead.
+
+### `bdg cloak human-config` — humanization key reference
+
+A static, no-API-call reference for the SDK's `HumanConfigOverrides` — the keys
+`--human-config` accepts. The SDK's `merge_config` **silently ignores unknown
+keys**, so a typo'd key does nothing; this lists the real keys (and the defaults
+the `default` preset pins).
+
+```bash
+bdg cloak human-config            # grouped table
+bdg cloak human-config --json     # machine-readable
+```
 
 ### `bdg cloak delete <id>`
 
@@ -873,6 +952,9 @@ bdg cloak update proxy-tz-demo --user-agent "Mozilla/5.0 custom" --timezone Amer
 | `bdg cloak profile reset-ua <id>` | Clear explicit User-Agent |
 | `bdg cloak personas` | List coherent device personas usable with `--persona` |
 | `bdg cloak proxy-credentials` | List saved proxy credentials |
+| `bdg cloak storage-state <id>` | Upload (`--file`) / `--clear` / inspect a profile's pre-seeded session state |
+| `bdg cloak check <id>` | Static coherence dry-run — no browser launch (exit 0 if coherent, 1 if warnings) |
+| `bdg cloak human-config` | List overridable `--human-config` keys (SDK HumanConfigOverrides) |
 | `bdg cloak launch <id>` | Start a profile's browser |
 | `bdg cloak stop <id>` | Stop a running profile |
 | `bdg cloak connect <id> [url]` | Attach bdg session to a profile; `--force` resets first; auto-recovers on relaunch |

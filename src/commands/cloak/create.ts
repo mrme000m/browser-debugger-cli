@@ -68,7 +68,20 @@ export function registerCloakCreateCommand(program: Command): void {
             exitCode: EXIT_CODES.INVALID_ARGUMENTS,
           };
         }
-        const body = bodyFromOptions(opts);
+        const built = bodyFromOptions(opts);
+        if (built.error) {
+          return {
+            success: false,
+            error: built.error,
+            exitCode: built.exitCode ?? EXIT_CODES.INVALID_ARGUMENTS,
+            errorContext: {
+              suggestion:
+                'A JSON field (--storage-state / --human-config) could not be parsed. ' +
+                'See `bdg cloak create --list-fields` and `bdg cloak human-config`.',
+            },
+          };
+        }
+        const body = built.body;
         const result = await cbmPost<CbmProfile>('/api/profiles', body);
         if (!result.success) {
           return {
@@ -90,7 +103,11 @@ export function registerCloakCreateCommand(program: Command): void {
             exitCode: EXIT_CODES.SOFTWARE_ERROR,
           };
         }
-        return { success: true, data };
+        return {
+          success: true,
+          data,
+          ...(built.warnings?.length ? { hint: built.warnings.join('\n') } : {}),
+        };
       },
       options,
       formatProfile
